@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Printer Manager - Ridhira Technologies</title>
+</head>
+<body>
+    <h2>Available Printers</h2>
+    <ul>
+        {% for name, info in printers.items() %}
+            <li>
+                {{ name }} - {{ info.get('kitchen', 'Unassigned') }}
+                <button onclick="testPrint('{{ name }}')">Test Print</button>
+            </li>
+        {% endfor %}
+    </ul>
+    <script>
+        async function testPrint(name) {
+            const res = await fetch(`/test_print/${name}`, {method: 'POST'});
+            const data = await res.json();
+            alert(data.message);
+        }
+    </script>
+</body>
+</html>

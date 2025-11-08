@@ -1,0 +1,4 @@
+{
+  "kitchen1": { "name": "EPSON_TM_T88", "kitchen": "Kitchen 1" },
+  "bar": { "name": "HP_Deskjet_2300", "kitchen": "Bar" }
+}
