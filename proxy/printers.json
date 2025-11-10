@@ -1,4 +1,12 @@
 {
-  "kitchen1": { "name": "EPSON_TM_T88", "kitchen": "Kitchen 1" },
-  "bar": { "name": "HP_Deskjet_2300", "kitchen": "Bar" }
+  "POS_Printer": { 
+    "kitchen": false,
+    "type": "system",
+    "system_name": "Dummy_Printer_1" 
+  },
+  "Kitchen_Printer": { 
+    "kitchen": true,
+    "type": "system",
+    "system_name": "Dummy_Printer_1" 
+  }
 }

@@ -172,8 +172,14 @@ def handle_default_printer_action():
             }), 500
         print("before image saved1")
         rpc_id = data.get('id', 1)
-        printer_name = data.get('params', {}).get('data',
-                                                  {}).get('printer_name')
+        printer_name = data.get('params', {}).get('data',{}).get('printer_name')
+
+        if printer_name is None:
+            # We assume 'POS_Printer' is the default for generic/unnamed jobs.
+            # IMPORTANT: This must be a name that exists as a key in your printers.json!
+        	printer_name = "POS_Printer"
+        	print("⚠️ ALERT: Incoming print job was missing a name. Falling back to 'POS_Printer'.")
+                                                              
         receipt_data = data.get('params', {}).get('data', {}).get('receipt')
         print("before image saved2")	        
         printers_config = load_printers()
