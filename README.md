@@ -13,9 +13,7 @@ A lightweight hybrid printing solution for Odoo POS and Kitchen printers.
 2. Run the Python proxy:
    ```bash
    cd proxy
-   pip install flask requests
+   pip3 install Flask Pillow Flask-CORS python-escpos
    python3 app.py
    ```
-3. Set proxy URL in Odoo System Parameters:
-   - Key: ridhira.proxy_url
-   - Value: http://localhost:9100/print
+3. proxy URL http://localhost:9100
