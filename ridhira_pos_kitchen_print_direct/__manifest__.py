@@ -1,5 +1,5 @@
 {
-    'name': 'Ridhira POS Print Proxy',
+    'name': 'Ridhira POS Kitchen Print Direct',
     'version': '1.0.0',
     'summary': 'Auto-detect and manage POS and Kitchen Printers with Test Print feature',
     'description': "Integrates Odoo POS with local/network printers using a Python proxy.",
