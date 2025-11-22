@@ -43,10 +43,8 @@ Place Module Folder: Place the entire module folder (the one containing __manife
 
 Resulting Structure:
 
-custom_addons/
-└── ridhira_pos_kitchen_print_direct/
-    ├── __manifest__.py
-    └── ... (other module files)
+custom_addons/ridhira_pos_kitchen_print_direct/__manifest__.py
+    
 B. Odoo Installation
 Change PROXY_URL in file ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js to the ip and port as 9100 where your printer is connected 
 
@@ -91,7 +89,7 @@ Verify Print: The kitchen print job should be sent directly to the configured ha
 
 Troubleshooting: If the job fails, check the console or log file for the running Python app.py proxy for specific connection or error messages.
            
-            <img class='img-responsive' src="01_screenshot.png">
+            
         </div>
     </div>
 </section>
