@@ -1,1 +1,64 @@
 <h1>Ridhira POS Print Proxy</h1>
+This guide provides steps for end-users to install the module in Odoo and configure the external Python print proxy.
+
+📦 I. Module Deployment and Installation
+This module consists of two parts: the Odoo module files and the external Python proxy service.
+
+A. Odoo Module Placement
+The module files (the folder named ridhira_pos_kitchen_print_direct) must be placed in a directory that Odoo is configured to scan for modules.
+
+Locate Odoo Addons Path: Identify the directory where your Odoo instance looks for custom modules. This is usually named custom_addons, extra-addons, or similar.
+
+Typical Path: path/to/odoo/server/custom_addons/
+
+Place Module Folder: Place the entire module folder (the one containing __manifest__.py and __init__.py) into this custom_addons directory.
+
+Resulting Structure:
+
+custom_addons/
+└── ridhira_pos_kitchen_print_direct/
+    ├── __manifest__.py
+    └── ... (other module files)
+B. Odoo Installation
+Change PROXY_URL in file ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js to the ip and port as 9100 where your printer is connected 
+
+Log In to Odoo: Log in as an administrator.
+
+Activate Developer Mode: If not already active, enable Developer Mode (found under your username > Settings).
+
+Update App List: Navigate to the Apps module and click Update Apps List.
+
+Install Module: Search for Ridhira POS Kitchen Print Direct and click Install.
+
+⚙️ II. Configure the External Print Proxy
+Your external Python proxy (ridhira_pos_kitchen_print_direct/proxy/app.py) must be running and accessible by the Odoo server, this has to be running on the machine that is connected to the printer, it can be POS device or any other machine that has direct access to the printer.
+
+Run the following command to install all necessary libraries for web handling (Flask, CORS), image processing (Pillow), and ESC/POS printing:
+
+pip install Flask Pillow Flask-CORS python-escpos
+Run the command python3 proxy/app.py to start the proxy app
+
+Navigate to http://127.0.0.1:9100/detect to see the list of printers detected on the machine
+
+Navigate to http://127.0.0.1:9100 to do the test print
+
+Steps to modify Odoo settings for preparation printers:
+
+Set Proxy Address: In Odoo, navigate to the Point of Sale application.
+
+Go to Configuration > Settings > Preparation Printers.
+
+Enable Preparation Printers check box
+
+Click Printers link and add a new printer with type as Use a printer connected to the IoT Box, give the IP address in Proxy IP Address
+
+Click Save.
+
+🧑‍🍳 III. Testing the Printing
+Open POS Session: Open a new Point of Sale session and allow it to fully load.
+
+Create and Validate: Ring up an order that requires a kitchen receipt (products marked as "Send to kitchen").
+
+Verify Print: The kitchen print job should be sent directly to the configured hardware without relying on the standard IoT box.
+
+Troubleshooting: If the job fails, check the console or log file for the running Python app.py proxy for specific connection or error messages.
