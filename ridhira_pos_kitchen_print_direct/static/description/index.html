@@ -30,13 +30,10 @@
         <h2 class="oe_slogan" style="color:#875A7B;">Installation Steps</h2>
         <h3 class="oe_slogan">Installation Guide</h3>
         <div class="oe_span6">
-            <img class="oe_picture oe_screenshot" src="01_screenshot.png">
-        </div>
-        <div class="oe_span6">
-            <p class="oe_mt32 oe_mb32 text-justify">
-            This guide provides steps for end-users to install the module in Odoo and configure the external Python print proxy.
+            <p>
+This guide provides steps for end-users to install the module in Odoo and configure the external Python print proxy.
 
-📦 I. Module Deployment and Installation
+I. Module Deployment and Installation
 This module consists of two parts: the Odoo module files and the external Python proxy service.
 
 A. Odoo Module Placement
@@ -65,7 +62,7 @@ Update App List: Navigate to the Apps module and click Update Apps List.
 
 Install Module: Search for Ridhira POS Kitchen Print Direct and click Install.
 
-⚙️ II. Configure the External Print Proxy
+II. Configure the External Print Proxy
 Your external Python proxy (ridhira_pos_kitchen_print_direct/proxy/app.py) must be running and accessible by the Odoo server, this has to be running on the machine that is connected to the printer, it can be POS device or any other machine that has direct access to the printer.
 
 Run the following command to install all necessary libraries for web handling (Flask, CORS), image processing (Pillow), and ESC/POS printing:
@@ -89,7 +86,7 @@ Click Printers link and add a new printer with type as Use a printer connected t
 
 Click Save.
 
-🧑‍🍳 III. Testing the Printing
+III. Testing the Printing
 Open POS Session: Open a new Point of Sale session and allow it to fully load.
 
 Create and Validate: Ring up an order that requires a kitchen receipt (products marked as "Send to kitchen").
