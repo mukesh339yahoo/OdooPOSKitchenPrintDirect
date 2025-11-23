@@ -12,73 +12,102 @@
     <div class="oe_row oe_spaced">
         <h2 class="oe_slogan" style="color:#875A7B;">Installation Steps</h2>
         <h3 class="oe_slogan">Installation Guide</h3>
-       <div style="display: flex; white-space: pre-wrap;">
-          
-This guide provides steps for end-users to install the module in Odoo and configure the external Python print proxy.
+       <div style="font-family: 'Roboto', 'Segoe UI', sans-serif; color: #374151; line-height: 1.6; max-width: 100%; padding: 20px; background-color: #ffffff;">
 
-I. Module Deployment and Installation
-This module consists of two parts: the Odoo module files and the external Python proxy service.
+    <!-- Header -->
+    <div style="border-bottom: 2px solid #714B67; padding-bottom: 10px; margin-bottom: 25px;">
+        <h2 style="color: #714B67; margin: 0; font-size: 24px;">Installation & Configuration Guide</h2>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Ridhira POS Kitchen Print Direct</p>
+    </div>
 
-A. Odoo Module Placement
-The module files (the folder named ridhira_pos_kitchen_print_direct) must be placed in a directory that Odoo is configured to scan for modules.
+    <p>This guide outlines the steps to install the module in Odoo and configure the external Python print proxy for direct kitchen printing.</p>
 
-Locate Odoo Addons Path: Identify the directory where your Odoo instance looks for custom modules. This is usually named custom_addons, extra-addons, or similar.
-
-Typical Path: path/to/odoo/server/custom_addons/
-
-Place Module Folder: Place the entire module folder (the one containing __manifest__.py and __init__.py) into this custom_addons directory.
-
-Resulting Structure:
-
-custom_addons/ridhira_pos_kitchen_print_direct/__manifest__.py
+    <!-- Section I -->
+    <h3 style="color: #111827; margin-top: 30px; font-size: 18px; border-left: 4px solid #714B67; padding-left: 10px;">I. Module Deployment and Installation</h3>
     
-B. Odoo Installation
-Change PROXY_URL in file ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js to the ip and port as 9100 where your printer is connected 
+    <div style="margin-left: 15px;">
+        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">A. Odoo Module Placement</h4>
+        <p>The module folder (<strong>ridhira_pos_kitchen_print_direct</strong>) must be placed in your Odoo custom addons directory.</p>
+        
+        <ol style="margin-bottom: 15px; padding-left: 20px;">
+            <li><strong>Locate Addons Path:</strong> Identify your <code>custom_addons</code> or <code>extra-addons</code> directory.</li>
+            <li><strong>Place Module:</strong> Copy the entire module folder into this directory.</li>
+        </ol>
 
-Log In to Odoo: Log in as an administrator.
+        <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 13px; color: #374151;">
+            <strong>Required Structure:</strong><br>
+            .../custom_addons/ridhira_pos_kitchen_print_direct/__manifest__.py
+        </div>
 
-Activate Developer Mode: If not already active, enable Developer Mode (found under your username > Settings).
+        <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 10px;">B. Configuration & Installation</h4>
+        
+        <!-- Warning Box -->
+        <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+            <strong style="color: #92400e;">⚠️ Critical Configuration Step</strong><br>
+            Before installing, you must edit the JavaScript file to point to your printer's IP.<br><br>
+            <strong>File:</strong> <code>ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js</code><br>
+            <strong>Action:</strong> Change <code>PROXY_URL</code> to your printer's IP and Port (e.g., 9100).
+        </div>
 
-Update App List: Navigate to the Apps module and click Update Apps List.
+        <p>Once configured:</p>
+        <ol style="padding-left: 20px;">
+            <li>Log in to Odoo as Administrator.</li>
+            <li>Activate <strong>Developer Mode</strong> (Settings > General Settings).</li>
+            <li>Go to <strong>Apps</strong> and click <em>Update Apps List</em>.</li>
+            <li>Search for <strong>Ridhira POS Kitchen Print Direct</strong> and click <strong>Install</strong>.</li>
+        </ol>
+    </div>
 
-Install Module: Search for Ridhira POS Kitchen Print Direct and click Install.
+    <!-- Section II -->
+    <h3 style="color: #111827; margin-top: 30px; font-size: 18px; border-left: 4px solid #714B67; padding-left: 10px;">II. Configure the External Print Proxy</h3>
 
-II. Configure the External Print Proxy
-Your external Python proxy (ridhira_pos_kitchen_print_direct/proxy/app.py) must be running and accessible by the Odoo server, this has to be running on the machine that is connected to the printer, it can be POS device or any other machine that has direct access to the printer.
+    <div style="margin-left: 15px;">
+        <p>The external Python proxy must run on a machine (POS device or PC) that has network access to the printer.</p>
 
-Run the following command to install all necessary libraries for web handling (Flask, CORS), image processing (Pillow), and ESC/POS printing:
+        <h4 style="font-size: 16px; font-weight: 600;">1. Install Dependencies</h4>
+        <p>Run the following command to install Flask, Pillow, CORS, and ESC/POS libraries:</p>
+        <div style="background-color: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 6px; font-family: monospace; overflow-x: auto;">
+            pip install Flask Pillow Flask-CORS python-escpos
+        </div>
 
-pip install Flask Pillow Flask-CORS python-escpos
-Run the command python3 proxy/app.py to start the proxy app
+        <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">2. Start the Proxy</h4>
+        <div style="background-color: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 6px; font-family: monospace; overflow-x: auto;">
+            python3 proxy/app.py
+        </div>
 
-Navigate to http://127.0.0.1:9100/detect to see the list of printers detected on the machine
+        <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">3. Verify Connection</h4>
+        <ul style="padding-left: 20px;">
+            <li><strong>Detect Printers:</strong> Navigate to <a href="#" style="color: #714B67; text-decoration: none;">http://127.0.0.1:9100/detect</a></li>
+            <li><strong>Test Print:</strong> Navigate to <a href="#" style="color: #714B67; text-decoration: none;">http://127.0.0.1:9100</a></li>
+        </ul>
 
-Navigate to http://127.0.0.1:9100 to do the test print
+        <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">4. Configure Odoo POS Settings</h4>
+        <ol style="padding-left: 20px;">
+            <li>Navigate to <strong>Point of Sale</strong> > <strong>Configuration</strong> > <strong>Settings</strong>.</li>
+            <li>Scroll to <strong>Preparation Printers</strong> and enable the checkbox.</li>
+            <li>Click the <strong>Printers</strong> link and Create a new printer.</li>
+            <li><strong>Printer Type:</strong> Select <em>"Use a printer connected to the IoT Box"</em>.</li>
+            <li><strong>Proxy IP Address:</strong> Enter the IP address configured in Step I-B.</li>
+            <li>Click <strong>Save</strong>.</li>
+        </ol>
+    </div>
 
-Steps to modify Odoo settings for preparation printers:
-
-Set Proxy Address: In Odoo, navigate to the Point of Sale application.
-
-Go to Configuration > Settings > Preparation Printers.
-
-Enable Preparation Printers check box
-
-Click Printers link and add a new printer with type as Use a printer connected to the IoT Box, give the IP address in Proxy IP Address
-
-Click Save.
-
-III. Testing the Printing
-Open POS Session: Open a new Point of Sale session and allow it to fully load.
-
-Create and Validate: Ring up an order that requires a kitchen receipt (products marked as "Send to kitchen").
-
-Verify Print: The kitchen print job should be sent directly to the configured hardware without relying on the standard IoT box.
-
-Troubleshooting: If the job fails, check the console or log file for the running Python app.py proxy for specific connection or error messages.
-           
-            
+    <!-- Section III -->
+    <h3 style="color: #111827; margin-top: 30px; font-size: 18px; border-left: 4px solid #714B67; padding-left: 10px;">III. Testing & Troubleshooting</h3>
+    
+    <div style="margin-left: 15px;">
+        <ul style="list-style-type: circle; padding-left: 20px;">
+            <li><strong>Open Session:</strong> Launch a new POS session.</li>
+            <li><strong>Order:</strong> Process an order with products marked as "Send to Kitchen".</li>
+            <li><strong>Verify:</strong> The receipt should print directly via the configured hardware.</li>
+        </ul>
+        
+        <div style="background-color: #f3f4f6; border-left: 4px solid #374151; padding: 10px; margin-top: 15px;">
+            <strong>Troubleshooting:</strong> If the print job fails, check the console/terminal window where <code>app.py</code> is running. It will display specific connection errors or status messages.
         </div>
     </div>
+
+</div>    </div>
 </section>
 <section class="oe_container oe_separator">
 </section>
