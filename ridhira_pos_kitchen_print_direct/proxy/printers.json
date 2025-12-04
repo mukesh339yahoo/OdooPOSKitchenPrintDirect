@@ -8,5 +8,11 @@
     "kitchen": true,
     "type": "system",
     "system_name": "Dummy_Printer_1" 
+  },
+  "KITCHEN_PRINTERESCPOS": { 
+    "kitchen": true,
+    "type": "escpos", 
+    "ip": "192.168.100.101", 
+    "port": 9100 
   }
 }
