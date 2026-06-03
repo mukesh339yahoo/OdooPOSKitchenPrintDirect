@@ -4,7 +4,7 @@ import json
 import os
 import socket
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from flask import Flask, jsonify, request, render_template
 from xml.etree import ElementTree as ET
 from flask_cors import CORS
@@ -146,13 +146,108 @@ def assign_printer():
     save_printers(printers)
     return jsonify({"message": "Printer assigned successfully"})
 
+def generate_test_image_bytes(printer_name):
+    """
+    Creates a simple black-and-white test receipt image for printing.
+    Returns: Tuple of (raw image bytes, base64 encoded bytes)
+    """
+    try:
+        # Create a blank white image
+        img_width = 384
+        img_height = 400
+        img = Image.new('L', (img_width, img_height), color=255) # 'L' mode for grayscale
+        d = ImageDraw.Draw(img)
+
+        # Use a simple font or load one if available
+        try:
+            # Try to load a known font (adjust path if necessary)
+            font = ImageFont.truetype("arial.ttf", 20) 
+        except IOError:
+            # Fallback to the default PIL font
+            font = ImageFont.load_default()
+
+        # Add text lines
+        d.text((10, 20), "Ridhira POS Print Proxy", fill=0, font=font)
+        d.text((10, 60), "--- TEST PRINT SUCCESS ---", fill=0, font=font)
+        d.text((10, 100), f"Printer Name: {printer_name}", fill=0, font=font)
+        d.text((10, 140), "Type: Confirmed Connection", fill=0, font=font)
+        d.text((10, 180), f"Timestamp: {os.times()[4]}", fill=0, font=font)
+        d.text((10, 220), "--------------------------", fill=0, font=font)
+        
+        # Save image to bytes buffer
+        buf = BytesIO()
+        # Save as PNG which is standard for ESC/POS and system printing
+        img.save(buf, format='PNG')
+        image_bytes = buf.getvalue()
+        
+        return image_bytes
+
+    except Exception as e:
+        print(f"Error generating test image: {e}")
+        return None
 
 @app.route('/test_print/<printer>', methods=['POST'])
 def test_print(printer):
     print(f"🖨️ Test print triggered for: {printer}")
-    # You could enhance this to actually run a test job based on the printer type
-    return jsonify({"message": f"Test print sent to {printer}!"})
+    
+    try:
+        printers_config = load_printers()
+        target_printer = printers_config.get(printer)
 
+        if not target_printer:
+            return jsonify({
+                "success": False, 
+                "message": f"Error: Printer '{printer}' not found in configuration."
+            }), 400
+
+        # Generate the test image data
+        image_bytes = generate_test_image_bytes(printer)
+        if image_bytes is None:
+            return jsonify({"success": False, "message": "Failed to generate test image data."}), 500
+
+        print_type = target_printer['type']
+        print_success = False
+        print_message = "Test job not executed."
+
+        # --- Route and Execute Test Print ---
+        if print_type == 'system':
+            # For system printers, save the PNG file and use the OS command
+            file_name = os.path.join(IMAGE_SAVE_PATH, f'test_receipt_{printer}.png')
+            
+            # Save the image from bytes to the file system
+            Image.open(BytesIO(image_bytes)).save(file_name)
+            
+            system_name = target_printer.get("system_name")
+            print_success, print_message = print_to_system(file_name, system_name)
+
+        elif print_type == 'escpos':
+            # For ESC/POS, send the raw bytes directly
+            ip = target_printer.get("ip")
+            port = target_printer.get("port")
+            print_success, print_message = print_to_escpos(image_bytes, ip, port)
+        
+        else:
+            print_message = f"Unsupported printer type for test: {print_type}"
+
+        # --- Return Result ---
+        if print_success:
+            return jsonify({
+                "success": True, 
+                "message": f"Test print job successfully sent to {printer} ({print_type}). Details: {print_message}"
+            }), 200
+        else:
+            print(f"❌ Test Print Failed for {printer}: {print_message}")
+            return jsonify({
+                "success": False, 
+                "message": f"Test print failed for {printer}. Check proxy logs. Error: {print_message}"
+            }), 500
+
+    except Exception as e:
+        print(f"❌ General Error during test print for {printer}: {e}")
+        return jsonify({
+            "success": False, 
+            "message": f"Proxy encountered an internal error during test print: {e}"
+        }), 500
 
 @app.route('/hw_proxy/default_printer_action', methods=['POST'])
 def handle_default_printer_action():
