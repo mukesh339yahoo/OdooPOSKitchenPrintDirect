@@ -14,7 +14,8 @@
     'data': [],
     'assets': {
         'point_of_sale._assets_pos': [
-            'ridhira_pos_print_proxy/static/src/js/pos_print_override.js',
+            'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',
+            'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
         ],
     },
     'license': 'LGPL-3',
