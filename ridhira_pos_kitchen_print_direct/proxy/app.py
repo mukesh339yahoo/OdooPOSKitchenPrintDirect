@@ -16,6 +16,7 @@ from flask_cors import CORS
 from subprocess import run, CalledProcessError
 # Imports for ESC/POS (Requires 'python-escpos')
 from escpos.printer import Network as EscposNetworkPrinter
+from waitress import serve
 # Imports for QZ TRAY (Requires 'websocket-client' if implemented)
 # import websocket 
 # import ssl 
@@ -506,5 +507,6 @@ if __name__ == '__main__':
     # Initialize the queue manager when starting the server
     queue_manager = PrintQueueManager()
     
-    # Run the Flask app with the built-in threaded server
-    app.run(host='0.0.0.0', port=9100, debug=True, threaded=True)
+    # Run the Flask app with Waitress WSGI server
+    print("🚀 Starting proxy with Waitress on port 9100...")
+    serve(app, host='0.0.0.0', port=9100)
