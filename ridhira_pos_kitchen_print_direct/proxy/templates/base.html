@@ -1,24 +1,398 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Printer Manager - Ridhira Technologies</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Proxy Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --status-pending: #eab308;
+            --status-printing: #3b82f6;
+            --status-completed: #22c55e;
+            --status-failed: #ef4444;
+            --status-cancelled: #64748b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-panel {
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Printer Status Grid */
+        .printers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .printer-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .printer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .printer-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-type { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        
+        .printer-stats {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .queue-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        button.primary {
+            background: var(--accent-blue);
+            border-color: transparent;
+        }
+
+        button.primary:hover {
+            background: #2563eb;
+        }
+
+        /* Jobs Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-pending .status-dot { background: var(--status-pending); box-shadow: 0 0 8px var(--status-pending); }
+        .status-printing .status-dot { background: var(--status-printing); box-shadow: 0 0 8px var(--status-printing); }
+        .status-completed .status-dot { background: var(--status-completed); }
+        .status-failed .status-dot { background: var(--status-failed); box-shadow: 0 0 8px var(--status-failed); }
+        .status-cancelled .status-dot { background: var(--status-cancelled); }
+
+        .job-id {
+            color: var(--text-secondary);
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btns button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .error-msg {
+            color: var(--status-failed);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
 </head>
 <body>
-    <h2>Available Printers</h2>
-    <ul>
-        {% for name, info in printers.items() %}
-            <li>
-                {{ name }} - {{ info.get('kitchen', 'Unassigned') }}
-                <button onclick="testPrint('{{ name }}')">Test Print</button>
-            </li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <header>
+            <h1>Print Proxy Dashboard</h1>
+            <div id="connection-status" style="color: var(--status-completed); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+                <div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div>
+                Live Updates
+            </div>
+        </header>
+
+        <section class="printers-grid" id="printers-container">
+            <!-- Printer cards injected via JS -->
+            <div class="glass-panel" style="display: flex; justify-content: center; padding: 2rem;">
+                Loading printers...
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Recent Jobs</h2>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Job ID & Time</th>
+                            <th>Target Printer</th>
+                            <th>Status</th>
+                            <th>Retries</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-table-body">
+                        <!-- Jobs injected via JS -->
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading jobs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
     <script>
-        async function testPrint(name) {
-            const res = await fetch(`/test_print/${name}`, {method: 'POST'});
-            const data = await res.json();
-            alert(data.message);
+        async function fetchPrinters() {
+            try {
+                const res = await fetch('/api/printers/status');
+                const data = await res.json();
+                
+                const container = document.getElementById('printers-container');
+                container.innerHTML = '';
+                
+                for (const [name, info] of Object.entries(data)) {
+                    const card = document.createElement('div');
+                    card.className = 'glass-panel printer-card';
+                    card.innerHTML = `
+                        <div class="printer-header">
+                            <span class="printer-name">${name}</span>
+                            <span class="badge badge-type">${info.type}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                            ${info.kitchen ? 'Kitchen Printer' : 'Standard Printer'}
+                        </div>
+                        <div class="printer-stats">
+                            <div>
+                                <div style="margin-bottom: 0.25rem;">Queue</div>
+                                <div class="queue-count">${info.queue_length}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <button onclick="testPrint('${name}')">Test Print</button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+            } catch (error) {
+                console.error("Failed to fetch printers:", error);
+            }
         }
+
+        async function fetchJobs() {
+            try {
+                const res = await fetch('/api/jobs');
+                const jobs = await res.json();
+                
+                const tbody = document.getElementById('jobs-table-body');
+                tbody.innerHTML = '';
+                
+                if (jobs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No recent print jobs.</td></tr>';
+                    return;
+                }
+
+                jobs.forEach(job => {
+                    const tr = document.createElement('tr');
+                    
+                    // Format timestamp safely
+                    let timeStr = job.timestamp;
+                    try {
+                        const d = new Date(job.timestamp + "Z"); // SQLite usually UTC
+                        if (!isNaN(d)) timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    } catch(e){}
+
+                    let statusCapitalized = job.status.charAt(0).toUpperCase() + job.status.slice(1);
+                    
+                    let actionHtml = '';
+                    if (job.status === 'failed') {
+                        actionHtml = `<button onclick="retryJob('${job.id}')" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: transparent;">Retry</button>`;
+                    }
+                    if (job.status === 'pending' || job.status === 'failed') {
+                        actionHtml += `<button onclick="cancelJob('${job.id}')" style="background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: transparent;">Cancel</button>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td>
+                            <div>${timeStr}</div>
+                            <div class="job-id">${job.id.split('_').slice(1,3).join('_')}</div>
+                        </td>
+                        <td><strong>${job.printer_name}</strong></td>
+                        <td class="status-${job.status}">
+                            <div style="display: flex; align-items: center;">
+                                <span class="status-dot"></span>
+                                ${statusCapitalized}
+                            </div>
+                            ${job.error_message ? `<div class="error-msg" title="${job.error_message}">${job.error_message}</div>` : ''}
+                        </td>
+                        <td>${job.retries > 0 ? job.retries : '-'}</td>
+                        <td class="action-btns">${actionHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Failed to fetch jobs:", error);
+                document.getElementById('connection-status').innerHTML = `<div class="status-dot" style="background: var(--status-failed); box-shadow: 0 0 8px var(--status-failed);"></div> Disconnected`;
+                document.getElementById('connection-status').style.color = 'var(--status-failed)';
+            }
+        }
+
+        async function testPrint(name) {
+            try {
+                const res = await fetch(`/test_print/${name}`, {method: 'POST'});
+                const data = await res.json();
+                if(!data.success) alert(data.message);
+                fetchPrinters();
+                fetchJobs();
+            } catch(e) {
+                alert("Error sending test print.");
+            }
+        }
+
+        async function retryJob(jobId) {
+            try {
+                await fetch(`/api/jobs/retry/${jobId}`, {method: 'POST'});
+                fetchJobs();
+                fetchPrinters();
+            } catch(e) {
+                alert("Error retrying job.");
+            }
+        }
+
+        async function cancelJob(jobId) {
+            try {
+                if(confirm("Are you sure you want to cancel this job?")) {
+                    await fetch(`/api/jobs/cancel/${jobId}`, {method: 'POST'});
+                    fetchJobs();
+                    fetchPrinters();
+                }
+            } catch(e) {
+                alert("Error cancelling job.");
+            }
+        }
+
+        // Initial fetch and set interval for polling
+        fetchPrinters();
+        fetchJobs();
+        
+        setInterval(() => {
+            fetchPrinters();
+            fetchJobs();
+            // Reset connection status if it was disconnected
+            document.getElementById('connection-status').innerHTML = `<div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div> Live Updates`;
+            document.getElementById('connection-status').style.color = 'var(--status-completed)';
+        }, 2500);
     </script>
 </body>
 </html>
