@@ -1,8 +1,8 @@
 {
     'name': 'Ridhira POS Kitchen Print Direct',
     'version': '1.0.0',
-    'summary': 'Auto-detect and manage POS and Kitchen Printers with Test Print feature',
-    'description': "Integrates Odoo POS with local/network printers using a Python proxy.",
+    'summary': 'Auto-detect and manage POS and Kitchen Printers with Test Print feature. Supports Self Orders',
+    'description': "Integrates Odoo POS with local/network printers using a Python proxy. Supports Self Orders.",
     'author': 'Ridhira Technologies, Pune, India',
     'website': 'https://ridhira.desigoogly.com',
     'category': 'Point of Sale',
