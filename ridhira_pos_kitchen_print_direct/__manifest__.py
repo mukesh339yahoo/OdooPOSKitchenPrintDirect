@@ -18,7 +18,7 @@
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
         ],
     },
-    'license': 'LGPL-3',
+    'license': 'OPL-1',
     'installable': True,
     'application': True,
 }
