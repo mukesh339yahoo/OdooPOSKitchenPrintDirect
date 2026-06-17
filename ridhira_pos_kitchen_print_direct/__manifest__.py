@@ -6,7 +6,7 @@
     'author': 'Ridhira Technologies, Pune, India',
     'website': 'https://ridhira.desigoogly.com',
     'category': 'Point of Sale',
-    'depends': ['point_of_sale', 'pos_epson_printer'],
+    'depends': ['point_of_sale'],
      'images': [
         'static/description/icon.png',
         'static/description/01_screenshot.png'
