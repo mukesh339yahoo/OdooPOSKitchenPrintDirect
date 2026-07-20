@@ -121,7 +121,7 @@
                     <li><strong>Detect Printers:</strong> API access available at <code style="color: #e83e8c;">http://127.0.0.1:9100/detect</code></li>
                 </ul>
 
-                <h4 style="font-size: 16px; font-weight: 600;">4. Configure Odoo POS Settings</h4>
+                <h4 style="font-size: 16px; font-weight: 600;">4. Configure Odoo POS Settings (Kitchen Printers)</h4>
                 <ol style="padding-left: 20px;">
                     <li>Navigate to <strong>Point of Sale</strong> > <strong>Configuration</strong> > <strong>Settings</strong>.</li>
                     <li>Scroll to <strong>Preparation Printers</strong> and enable the checkbox.</li>
@@ -130,6 +130,19 @@
                     <li><strong>Proxy IP Address:</strong> Enter the IP address of the machine running the Python proxy.</li>
                     <li>Click <strong>Save</strong>.</li>
                 </ol>
+
+                <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">5. Configure the Main Receipt Printer</h4>
+                <ol style="padding-left: 20px; margin-bottom: 20px;">
+                    <li>Go to <strong>Point of Sale</strong> ‣ <strong>Configuration</strong> ‣ <strong>Settings</strong>.</li>
+                    <li>Scroll to the <strong>Connected Devices</strong> section and check the box for <strong>ePos Printer</strong>.</li>
+                    <li>Set the IP address of the proxy app (e.g. <code>127.0.0.1</code>) as the ePos printer IP.</li>
+                </ol>
+
+                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 4px;">
+                    <strong style="color: #92400e;"><i class="fa fa-shield"></i> Setting Changes for POS Terminal Browser (Mixed Content)</strong><br>
+                    If your Odoo instance is hosted on HTTPS, but the proxy is on HTTP, browsers will block the connection. <br><br>
+                    You must configure the specific browser on the POS terminal to allow insecure content for your Odoo domain (in Chrome, this is under <strong>Site Settings > Insecure content > Allow</strong>). Apply this to whichever browser you use to access the POS terminal.
+                </div>
             </div>
 
             <!-- III. Testing -->
