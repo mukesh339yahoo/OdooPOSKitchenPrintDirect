@@ -50,3 +50,33 @@ patch(HWPrinter.prototype, {
         return super._get_result_from_send_action(...arguments);
     },
 });
+
+// --- 2. PATCH: EpsonPrinter to intercept and route to HWPrinter ---
+// In Odoo Enterprise, IoT Box selection might be restricted. This allows
+// users to configure an 'ePos Printer' with a dummy IP, and we'll secretly
+// route that print job to our Python Proxy via the HWPrinter logic!
+import { EpsonPrinter } from "@pos_epson_printer/app/epson_printer";
+
+patch(EpsonPrinter.prototype, {
+    setup(params) {
+        super.setup(...arguments);
+        // Create an internal HWPrinter instance pointing to our proxy
+        this.ridhira_proxy_printer = new HWPrinter({ url: PROXY_URL });
+        console.log("[Ridhira Proxy] EpsonPrinter intercepted. Jobs will route to:", PROXY_URL);
+    },
+
+    async print_receipt(receipt) {
+        // Delegate the receipt rendering and RPC request to the HWPrinter
+        if (this.ridhira_proxy_printer) {
+            return await this.ridhira_proxy_printer.print_receipt(receipt);
+        }
+        return super.print_receipt(...arguments);
+    },
+
+    async open_cashbox() {
+        if (this.ridhira_proxy_printer) {
+            return await this.ridhira_proxy_printer.open_cashbox();
+        }
+        return super.open_cashbox(...arguments);
+    }
+});
