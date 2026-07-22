@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local db and temp files
+*.db
+ridhira_pos_kitchen_print_direct/proxy/jobs.db
+ridhira_pos_kitchen_print_direct/proxy/print_images/

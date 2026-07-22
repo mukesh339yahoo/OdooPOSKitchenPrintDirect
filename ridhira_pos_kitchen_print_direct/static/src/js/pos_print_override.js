@@ -22,33 +22,23 @@ patch(HWPrinter.prototype, {
     
     /**
      * @override
-     * The original method processes the response from the /hw_proxy/... call.
-     * We override it to suppress the error notification for our custom proxy.
+     * The original method in Odoo 18 uses sendAction.
+     * We override it to handle custom responses from our proxy.
      */
-    _get_result_from_send_action(action, result) {
-        // Odoo's default endpoint is '/hw_proxy/default_printer_action'
-        if (action.action === 'default_printer_action') {
-            // The result structure from a successful Odoo proxy call is usually 
-            // a JSON-RPC response with 'result: true'.
-            // Your Flask proxy returns a simple JSON with {'success': true, ...}
-            
-            // If the proxy returns a 200 OK and our custom success message:
+    async sendAction(data) {
+        try {
+            const result = await super.sendAction(data);
+            // If the proxy returns our custom success flag, normalize it
             if (result && result.success) {
-                // Return a structure that mimics a successful RPC response 
-                // that Odoo's framework will accept without throwing an error.
-                return { result: true };
+                return true;
             }
-            
-            // Since the proxy is working, we assume any failure is minor 
-            // and simply return success to prevent the UI error notification.
-            // **This is the key to suppressing the error message.**
-            return { result: true };
-
+            return result;
+        } catch (error) {
+            // Suppress connection errors or handle them gracefully
+            console.warn("[Ridhira Proxy] Print action failed or returned error structure, returning true to suppress:", error);
+            return true;
         }
-        
-        // Fallback to the original method for all other actions (e.g., check_status)
-        return super._get_result_from_send_action(...arguments);
-    },
+    }
 });
 
 // --- 2. PATCH: EpsonPrinter to intercept and route to HWPrinter ---
@@ -65,18 +55,18 @@ patch(EpsonPrinter.prototype, {
         console.log("[Ridhira Proxy] EpsonPrinter intercepted. Jobs will route to:", PROXY_URL);
     },
 
-    async print_receipt(receipt) {
+    async printReceipt(receipt) {
         // Delegate the receipt rendering and RPC request to the HWPrinter
         if (this.ridhira_proxy_printer) {
-            return await this.ridhira_proxy_printer.print_receipt(receipt);
+            return await this.ridhira_proxy_printer.printReceipt(receipt);
         }
-        return super.print_receipt(...arguments);
+        return super.printReceipt(...arguments);
     },
 
-    async open_cashbox() {
+    async openCashbox() {
         if (this.ridhira_proxy_printer) {
-            return await this.ridhira_proxy_printer.open_cashbox();
+            return await this.ridhira_proxy_printer.openCashbox();
         }
-        return super.open_cashbox(...arguments);
+        return super.openCashbox(...arguments);
     }
 });
