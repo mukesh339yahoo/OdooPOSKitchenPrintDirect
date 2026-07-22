@@ -447,7 +447,7 @@ def handle_default_printer_action():
     try:
         data = request.json
         if data is None:
-            return jsonify({"jsonrpc": "2.0", "id": 1, "error": {"code": 500, "message": "Empty body"}}), 500
+            return jsonify({"jsonrpc": "2.0", "id": 1, "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": "Empty body"}}}), 200
             
         rpc_id = data.get('id', 1)
         printer_name = data.get('params', {}).get('data',{}).get('printer_name')
@@ -461,14 +461,14 @@ def handle_default_printer_action():
         if printer_name not in printers_config:
             return jsonify({
                 "jsonrpc": "2.0", "id": rpc_id, 
-                "error": {"code": 101, "message": f"Printer '{printer_name}' not configured."}
-            }), 400
+                "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": f"Printer '{printer_name}' not configured."}}
+            }), 200
             
         if not receipt_data:
             return jsonify({
                 "jsonrpc": "2.0", "id": rpc_id, 
-                "error": {"code": 100, "message": "Receipt data not found."}
-            }), 400
+                "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": "Receipt data not found."}}
+            }), 200
             
         try:
             image_bytes = base64.b64decode(receipt_data)
@@ -480,8 +480,8 @@ def handle_default_printer_action():
         except Exception as e:
             return jsonify({
                 "jsonrpc": "2.0", "id": rpc_id, 
-                "error": {"code": 200, "message": f"Image decoding error: {e}"}
-            }), 500
+                "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": f"Image decoding error: {e}"}}
+            }), 200
             
         job = {
             'id': job_id,
@@ -499,8 +499,8 @@ def handle_default_printer_action():
         rpc_id = request.json.get('id', 1) if request.is_json else 1
         return jsonify({
             "jsonrpc": "2.0", "id": rpc_id, 
-            "error": {"code": 300, "message": f"Proxy server error: {e}"}
-        }), 500
+            "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": f"Proxy server error: {e}"}}
+        }), 200
 
 
 if __name__ == '__main__':
