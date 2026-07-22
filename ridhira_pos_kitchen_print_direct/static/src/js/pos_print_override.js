@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { HWPrinter } from "@point_of_sale/app/printer/hw_printer"; 
+import { HWPrinter } from "@point_of_sale/app/utils/printer/hw_printer"; 
 import { patch } from "@web/core/utils/patch";
 
 // --- 1. PATCH: HWPrinter to suppress error ---
@@ -38,7 +38,7 @@ patch(HWPrinter.prototype, {
 // In Odoo Enterprise, IoT Box selection might be restricted. This allows
 // users to configure an 'ePos Printer' with their Proxy IP, and we'll secretly
 // route that print job to our Python Proxy via the HWPrinter logic!
-import { EpsonPrinter } from "@pos_epson_printer/app/epson_printer";
+import { EpsonPrinter } from "@point_of_sale/app/utils/printer/epson_printer";
 
 patch(EpsonPrinter.prototype, {
     setup(params) {
