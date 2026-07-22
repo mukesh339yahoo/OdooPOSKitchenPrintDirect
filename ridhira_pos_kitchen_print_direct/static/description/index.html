@@ -83,13 +83,7 @@
                 </div>
 
                 <h4 style="font-size: 16px; font-weight: 600; color: #374151; margin-top: 25px;">B. Configuration & Installation</h4>
-                <!-- Warning Box -->
-                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 4px;">
-                    <strong style="color: #92400e;"><i class="fa fa-exclamation-triangle"></i> Critical Configuration Step</strong><br>
-                    Before installing, you must edit the JavaScript file to point to your proxy's IP address.<br><br>
-                    <strong>File:</strong> <code>ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js</code><br>
-                    <strong>Action:</strong> Change <code>PROXY_URL</code> to your proxy's IP. The port must be <code>9100</code>.
-                </div>
+
 
                 <ol style="padding-left: 20px; margin-top: 15px;">
                     <li>Log in to Odoo as Administrator.</li>
@@ -126,8 +120,9 @@
                     <li>Navigate to <strong>Point of Sale</strong> > <strong>Configuration</strong> > <strong>Settings</strong>.</li>
                     <li>Scroll to <strong>Preparation Printers</strong> and enable the checkbox.</li>
                     <li>Click the <strong>Printers</strong> link and Create a new printer.</li>
-                    <li><strong>Printer Type:</strong> Select <em>"Use a printer connected to the IoT Box"</em>.</li>
-                    <li><strong>Proxy IP Address:</strong> Enter the IP address of the machine running the Python proxy.</li>
+                    <li><strong>Printer Name:</strong> Give it the exact name you configured in <code>printers.json</code> (e.g. "Kitchen_Printer").</li>
+                    <li><strong>Printer Type:</strong> Select <em>"Use an Epson printer"</em>.</li>
+                    <li><strong>Epson Printer IP Address:</strong> Enter the IP address of the machine running the Python proxy (e.g., <code>192.168.1.100</code>).</li>
                     <li>Click <strong>Save</strong>.</li>
                 </ol>
 
@@ -135,7 +130,8 @@
                 <ol style="padding-left: 20px; margin-bottom: 20px;">
                     <li>Go to <strong>Point of Sale</strong> ‣ <strong>Configuration</strong> ‣ <strong>Settings</strong>.</li>
                     <li>Scroll to the <strong>Connected Devices</strong> section and check the box for <strong>ePos Printer</strong>.</li>
-                    <li>Set the IP address of the proxy app (e.g. <code>127.0.0.1</code>) as the ePos printer IP.</li>
+                    <li><strong>ePos Printer IP Address:</strong> Enter the IP address of the machine running the Python proxy (e.g., <code>192.168.1.100</code>).</li>
+                    <li><em>Note: Main receipt jobs will automatically route to the "POS_Printer" queue in your proxy.</em></li>
                 </ol>
 
                 <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 4px;">

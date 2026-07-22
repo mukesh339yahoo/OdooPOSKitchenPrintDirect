@@ -12,6 +12,13 @@ patch(HWPrinter.prototype, {
      * We override it to handle custom responses from our proxy.
      */
     async sendAction(data) {
+        // Inject the printer name if it's available (either passed from Epson wrapper or native config)
+        if (this.proxy_printer_name) {
+            data.printer_name = this.proxy_printer_name;
+        } else if (this.config && this.config.name) {
+            data.printer_name = this.config.name;
+        }
+        
         try {
             const result = await super.sendAction(data);
             // If the proxy returns our custom success flag, normalize it
@@ -50,6 +57,8 @@ patch(EpsonPrinter.prototype, {
     async printReceipt(receipt) {
         // Delegate the receipt rendering and RPC request to the HWPrinter
         if (this.ridhira_proxy_printer) {
+            // Pass the Odoo printer name down to the HWPrinter so it can route it to the proxy
+            this.ridhira_proxy_printer.proxy_printer_name = this.config?.name || "POS_Printer";
             return await this.ridhira_proxy_printer.printReceipt(receipt);
         }
         return super.printReceipt(...arguments);
