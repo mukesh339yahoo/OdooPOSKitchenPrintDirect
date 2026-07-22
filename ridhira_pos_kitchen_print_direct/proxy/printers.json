@@ -1,8 +1,9 @@
 {
   "POS_Printer": { 
-    "kitchen": false,
-    "type": "system",
-    "system_name": "Dummy_Printer_1" 
+    "kitchen": true,
+   "type": "escpos", 
+    "ip": "127.0.0.1", 
+    "port": 9100 
   },
   "Kitchen_Printer": { 
     "kitchen": true,
