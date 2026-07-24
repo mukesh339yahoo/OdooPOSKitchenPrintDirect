@@ -12,7 +12,8 @@ import { patch } from "@web/core/utils/patch";
 patch(PosStore.prototype, {
     async initServerData() {
         const result = await super.initServerData(...arguments);
-        if (this.session._self_ordering && this.printers_category_ids_set?.size) {
+        if (this.session._self_ordering || ['mobile', 'kiosk'].includes(this.config.self_ordering_mode)) {
+            console.log("Ridhira: Connecting to ORDER_STATE_CHANGED websocket...");
             this.data.connectWebSocket(
                 "ORDER_STATE_CHANGED",
                 this._ridhiraOnSelfOrderStateChanged.bind(this)
@@ -22,7 +23,9 @@ patch(PosStore.prototype, {
     },
 
     async _ridhiraOnSelfOrderStateChanged() {
-        if (!this.printers_category_ids_set?.size) {
+        console.log("Ridhira: Received ORDER_STATE_CHANGED event!");
+        if (!this.unwatched?.printers?.length) {
+            console.warn("Ridhira: No unwatched printers configured for Kitchen Printing. Aborting.");
             return;
         }
 
@@ -30,7 +33,7 @@ patch(PosStore.prototype, {
         for (const order of this.models["pos.order"].filter(
             (o) =>
                 !o.finalized &&
-                o.pos_reference?.startsWith("Self-Order") &&
+                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
                 typeof o.id === "number"
         )) {
             preparationBefore.set(
@@ -38,26 +41,70 @@ patch(PosStore.prototype, {
                 JSON.stringify(order.last_order_preparation_change)
             );
         }
+        
+        console.log("Ridhira: Preparation state before sync:", Object.fromEntries(preparationBefore));
 
         // Include table QR orders (Odoo's getServerOrders excludes table_id for self-orders).
-        await this.loadServerOrders([
-            ["config_id", "=", this.config.id],
-            ["state", "=", "draft"],
-            "|",
-            ["pos_reference", "ilike", "Kiosk"],
-            ["pos_reference", "ilike", "Self-Order"],
-        ]);
+        console.log("Ridhira: Fetching new orders from server...");
+        try {
+            await this.data.loadServerOrders([
+                ["config_id", "=", this.config.id],
+                ["state", "=", "draft"],
+                "|", "|",
+                ["source", "in", ["kiosk", "mobile"]],
+                ["tracking_number", "!=", false],
+                ["floating_order_name", "ilike", "Self-Order"]
+            ]);
+        } catch (e) {
+            console.error("Ridhira: Error fetching server orders:", e);
+        }
 
+        let sentToPrinter = false;
+        
         for (const order of this.models["pos.order"].filter(
             (o) =>
                 !o.finalized &&
-                o.pos_reference?.startsWith("Self-Order") &&
+                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
                 typeof o.id === "number"
         )) {
             const preparationAfter = JSON.stringify(order.last_order_preparation_change);
-            if (preparationBefore.get(order.id) !== preparationAfter) {
-                await this.sendOrderInPreparation(order);
+            const prepBefore = preparationBefore.get(order.id);
+            
+            console.log(`Ridhira: Order ${order.id} | Source: ${order.source} | Tracking: ${order.tracking_number}`);
+            console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter}`);
+            
+            if (prepBefore !== preparationAfter) {
+                console.log(`Ridhira: Changes detected for Order ${order.id}! Sending to printer...`);
+                try {
+                    // Restore the PREVIOUS preparation state before the server sync overwritten it.
+                    // This allows Odoo's internal `changesToOrder` to compute the correct delta!
+                    order.last_order_preparation_change = prepBefore ? JSON.parse(prepBefore) : { lines: {} };
+                    
+                    await this.sendOrderInPreparation(order);
+                    sentToPrinter = true;
+                    console.log(`Ridhira: sendOrderInPreparation finished for order ${order.id}.`);
+                } catch (e) {
+                    console.error(`Ridhira: Failed to print order ${order.id}:`, e);
+                }
+            } else {
+                console.log(`Ridhira: No preparation changes for Order ${order.id}.`);
             }
         }
+        
+        if (!sentToPrinter) {
+            console.log("Ridhira: Done processing event, but no new changes were sent to the printer.");
+        }
     },
+
+    async printChanges(order, orderChange, reprint = false, printers = this.unwatched.printers) {
+        console.log("Ridhira: printChanges executing!", {
+            orderId: order.id,
+            orderChange,
+            reprint,
+            printers: printers?.length
+        });
+        const result = await super.printChanges(...arguments);
+        console.log(`Ridhira: printChanges completed with result: ${result}`);
+        return result;
+    }
 });
