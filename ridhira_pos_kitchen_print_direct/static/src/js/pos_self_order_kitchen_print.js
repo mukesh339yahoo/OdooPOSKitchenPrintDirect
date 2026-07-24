@@ -49,7 +49,7 @@ patch(PosStore.prototype, {
         try {
             await this.data.loadServerOrders([
                 ["config_id", "=", this.config.id],
-                ["state", "=", "draft"],
+                ["state", "in", ["draft", "cancel"]],
                 "|", "|",
                 ["source", "in", ["kiosk", "mobile"]],
                 ["tracking_number", "!=", false],
@@ -73,14 +73,16 @@ patch(PosStore.prototype, {
             console.log(`Ridhira: Order ${order.id} | Source: ${order.source} | Tracking: ${order.tracking_number}`);
             console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter}`);
             
-            if (prepBefore !== preparationAfter) {
+            const isCancelled = order.state === "cancel";
+            
+            if (prepBefore !== preparationAfter || isCancelled) {
                 console.log(`Ridhira: Changes detected for Order ${order.id}! Sending to printer...`);
                 try {
                     // Restore the PREVIOUS preparation state before the server sync overwritten it.
                     // This allows Odoo's internal `changesToOrder` to compute the correct delta!
                     order.last_order_preparation_change = prepBefore ? JSON.parse(prepBefore) : { lines: {} };
                     
-                    await this.sendOrderInPreparation(order);
+                    await this.sendOrderInPreparation(order, { cancelled: isCancelled });
                     sentToPrinter = true;
                     console.log(`Ridhira: sendOrderInPreparation finished for order ${order.id}.`);
                 } catch (e) {
