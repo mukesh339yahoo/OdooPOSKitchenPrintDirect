@@ -46,7 +46,23 @@ patch(PosStore.prototype, {
         // Restrict fetch domain to current POS session window and mobile/self orders
         console.log("Ridhira: Fetching new orders from server...");
         try {
-            const sessionStartDate = this.pos_session?.start_at || this.session?.start_at || this.session?.opened_at;
+            const rawStartDate = this.pos_session?.start_at || this.session?.start_at || this.session?.opened_at;
+            let sessionStartDate = null;
+            if (rawStartDate) {
+                try {
+                    if (typeof rawStartDate === 'object' && rawStartDate.toFormat) {
+                        sessionStartDate = rawStartDate.toUTC().toFormat('yyyy-MM-dd HH:mm:ss');
+                    } else {
+                        const d = new Date(rawStartDate);
+                        if (!isNaN(d.getTime())) {
+                            sessionStartDate = d.toISOString().replace('T', ' ').split('.')[0];
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Ridhira: Could not parse session start date:", err);
+                }
+            }
+
             const domain = [
                 ["config_id", "=", this.config.id],
                 ["state", "in", ["draft", "cancel"]],
