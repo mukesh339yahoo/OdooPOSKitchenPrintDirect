@@ -25,7 +25,7 @@ patch(HWPrinter.prototype, {
             if (result && result.success) {
                 return true;
             }
-            return result;
+            return result || true;
         } catch (error) {
             // Suppress connection errors or handle them gracefully
             console.warn("[Ridhira Proxy] Print action failed or returned error structure, returning true to suppress:", error);
@@ -55,11 +55,16 @@ patch(EpsonPrinter.prototype, {
     },
 
     async printReceipt(receipt) {
+        console.log("[Ridhira Proxy] EpsonPrinter.printReceipt called!");
         // Delegate the receipt rendering and RPC request to the HWPrinter
         if (this.ridhira_proxy_printer) {
+            console.log("[Ridhira Proxy] Routing receipt to HWPrinter...");
             // Pass the Odoo printer name down to the HWPrinter so it can route it to the proxy
             this.ridhira_proxy_printer.proxy_printer_name = this.config?.name || "POS_Printer";
-            return await this.ridhira_proxy_printer.printReceipt(receipt);
+            const result = await this.ridhira_proxy_printer.printReceipt(receipt);
+            console.log("[Ridhira Proxy] HWPrinter.printReceipt returned:", result);
+            document.body.dataset.ridhiraLastPrint = Date.now();
+            return result;
         }
         return super.printReceipt(...arguments);
     },

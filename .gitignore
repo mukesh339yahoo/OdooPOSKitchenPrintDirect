@@ -7,3 +7,13 @@ __pycache__/
 *.db
 ridhira_pos_kitchen_print_direct/proxy/jobs.db
 ridhira_pos_kitchen_print_direct/proxy/print_images/
+venv/
+*.log
+*.png
+docker_test/test_env/
+docker_test/test_script/
+docker_test/create_order.py
+docker_test/debug.py
+docker_test/screenshot.png
+docker_test/screenshot.py
+docker_test/test_self_order_print.py

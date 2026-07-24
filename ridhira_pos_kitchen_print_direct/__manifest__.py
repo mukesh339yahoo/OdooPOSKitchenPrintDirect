@@ -17,6 +17,9 @@
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
         ],
+        'web.assets_tests': [
+            'ridhira_pos_kitchen_print_direct/static/tests/tours/kitchen_print_tour.js',
+        ],
     },
     'license': 'OPL-1',
     'installable': True,

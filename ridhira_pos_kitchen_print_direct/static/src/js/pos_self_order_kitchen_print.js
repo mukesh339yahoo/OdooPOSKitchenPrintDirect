@@ -30,31 +30,35 @@ patch(PosStore.prototype, {
         }
 
         const preparationBefore = new Map();
+        const stateBefore = new Map();
+        
         for (const order of this.models["pos.order"].filter(
             (o) =>
-                !o.finalized &&
                 (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
                 typeof o.id === "number"
         )) {
-            preparationBefore.set(
-                order.id,
-                JSON.stringify(order.last_order_preparation_change)
-            );
+            preparationBefore.set(order.id, JSON.stringify(order.last_order_preparation_change));
+            stateBefore.set(order.id, order.state);
         }
         
         console.log("Ridhira: Preparation state before sync:", Object.fromEntries(preparationBefore));
 
-        // Include table QR orders (Odoo's getServerOrders excludes table_id for self-orders).
+        // Restrict fetch domain to current POS session window and mobile/self orders
         console.log("Ridhira: Fetching new orders from server...");
         try {
-            await this.data.loadServerOrders([
+            const sessionStartDate = this.pos_session?.start_at || this.session?.start_at || this.session?.opened_at;
+            const domain = [
                 ["config_id", "=", this.config.id],
                 ["state", "in", ["draft", "cancel"]],
                 "|", "|",
                 ["source", "in", ["kiosk", "mobile"]],
                 ["tracking_number", "!=", false],
                 ["floating_order_name", "ilike", "Self-Order"]
-            ]);
+            ];
+            if (sessionStartDate) {
+                domain.push(["write_date", ">=", sessionStartDate]);
+            }
+            await this.data.loadServerOrders(domain);
         } catch (e) {
             console.error("Ridhira: Error fetching server orders:", e);
         }
@@ -63,23 +67,22 @@ patch(PosStore.prototype, {
         
         for (const order of this.models["pos.order"].filter(
             (o) =>
-                !o.finalized &&
                 (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
                 typeof o.id === "number"
         )) {
             const preparationAfter = JSON.stringify(order.last_order_preparation_change);
             const prepBefore = preparationBefore.get(order.id);
+            const wasCancelled = stateBefore.get(order.id) === "cancel";
+            const isCancelled = order.state === "cancel";
+            const justCancelled = !wasCancelled && isCancelled;
             
             console.log(`Ridhira: Order ${order.id} | Source: ${order.source} | Tracking: ${order.tracking_number}`);
-            console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter}`);
+            console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter} | wasCancelled: ${wasCancelled} | isCancelled: ${isCancelled}`);
             
-            const isCancelled = order.state === "cancel";
-            
-            if (prepBefore !== preparationAfter || isCancelled) {
-                console.log(`Ridhira: Changes detected for Order ${order.id}! Sending to printer...`);
+            if (prepBefore !== preparationAfter || justCancelled) {
+                console.log(`Ridhira: Printing required for Order ${order.id}! (prepChanged: ${prepBefore !== preparationAfter}, justCancelled: ${justCancelled})`);
                 try {
-                    // Restore the PREVIOUS preparation state before the server sync overwritten it.
-                    // This allows Odoo's internal `changesToOrder` to compute the correct delta!
+                    // Restore previous preparation state before server sync overwritten it
                     order.last_order_preparation_change = prepBefore ? JSON.parse(prepBefore) : { lines: {} };
                     
                     await this.sendOrderInPreparation(order, { cancelled: isCancelled });
