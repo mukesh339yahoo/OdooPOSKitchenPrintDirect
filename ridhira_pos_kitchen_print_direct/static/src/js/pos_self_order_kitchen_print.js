@@ -88,15 +88,20 @@ patch(PosStore.prototype, {
         )) {
             const preparationAfter = JSON.stringify(order.last_order_preparation_change);
             const prepBefore = preparationBefore.get(order.id);
-            const wasCancelled = stateBefore.get(order.id) === "cancel";
+            const wasTrackedInPOS = stateBefore.has(order.id);
+            const wasActiveInPOS = wasTrackedInPOS && stateBefore.get(order.id) !== "cancel";
             const isCancelled = order.state === "cancel";
-            const justCancelled = !wasCancelled && isCancelled;
+            const justCancelled = wasActiveInPOS && isCancelled;
+            const isDraft = order.state === "draft";
+            const hasPrepChanges = prepBefore !== preparationAfter;
+            
+            const shouldPrint = (isDraft && hasPrepChanges) || justCancelled;
             
             console.log(`Ridhira: Order ${order.id} | Source: ${order.source} | Tracking: ${order.tracking_number}`);
-            console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter} | wasCancelled: ${wasCancelled} | isCancelled: ${isCancelled}`);
+            console.log(`Ridhira: Before: ${prepBefore} | After: ${preparationAfter} | wasActiveInPOS: ${wasActiveInPOS} | isCancelled: ${isCancelled} | shouldPrint: ${shouldPrint}`);
             
-            if (prepBefore !== preparationAfter || justCancelled) {
-                console.log(`Ridhira: Printing required for Order ${order.id}! (prepChanged: ${prepBefore !== preparationAfter}, justCancelled: ${justCancelled})`);
+            if (shouldPrint) {
+                console.log(`Ridhira: Printing required for Order ${order.id}! (hasPrepChanges: ${hasPrepChanges}, justCancelled: ${justCancelled})`);
                 try {
                     // Restore previous preparation state before server sync overwritten it
                     order.last_order_preparation_change = prepBefore ? JSON.parse(prepBefore) : { lines: {} };
@@ -108,7 +113,7 @@ patch(PosStore.prototype, {
                     console.error(`Ridhira: Failed to print order ${order.id}:`, e);
                 }
             } else {
-                console.log(`Ridhira: No preparation changes for Order ${order.id}.`);
+                console.log(`Ridhira: No printing required for Order ${order.id}.`);
             }
         }
         
