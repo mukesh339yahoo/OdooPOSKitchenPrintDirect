@@ -96,19 +96,21 @@ patch(PosStore.prototype, {
             // which triggers an Odoo python override that wipes self_ordering_table_id on the server!
             let bestTable = order.table_id || order.self_ordering_table_id || tableBefore.get(order.id) || selfTableBefore.get(order.id);
 
-            if (bestTable && (!order.table_id || !order.self_ordering_table_id)) {
+            //if (bestTable && (!order.table_id || !order.self_ordering_table_id)) {
+            if (bestTable && !order.self_ordering_table_id) {
                 const tableIdNum = bestTable.id || bestTable; // Fallback in case it's already a number
 
                 if (typeof order.update === 'function') {
                     // Update both to be safe, using the numeric ID
                     order.update({
-                        table_id: tableIdNum,
+                        //table_id: tableIdNum,
                         self_ordering_table_id: tableIdNum
                     });
-                } else if (typeof order.set_table === 'function') {
-                    order.set_table(bestTable);
-                } else {
-                    order.table_id = bestTable;
+                } //else if (typeof order.set_table === 'function') {
+                //order.set_table(bestTable);
+                //}
+                else {
+                    //order.table_id = bestTable;
                     order.self_ordering_table_id = bestTable;
                 }
                 console.log(`Ridhira: Enforced table link for Order ${order.id} to Table ${tableIdNum}`);
