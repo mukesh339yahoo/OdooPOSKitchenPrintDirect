@@ -7,6 +7,7 @@ import sqlite3
 import threading
 import queue
 import time
+import platform
 from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
@@ -14,6 +15,15 @@ from flask import Flask, jsonify, request, render_template
 from xml.etree import ElementTree as ET
 from flask_cors import CORS
 from subprocess import run, CalledProcessError
+
+IS_WINDOWS = platform.system() == "Windows"
+if IS_WINDOWS:
+    try:
+        import win32print
+        import win32ui
+        from PIL import ImageWin
+    except ImportError:
+        print("WARNING: pywin32 is not installed. System printing on Windows will fail.")
 # Imports for ESC/POS (Requires 'python-escpos')
 from escpos.printer import Network as EscposNetworkPrinter
 from waitress import serve
@@ -235,19 +245,50 @@ class PrintQueueManager:
 
 # --- Dedicated Printing Functions ---
 def print_to_system(file_name, system_printer_name):
-    """Prints the image file using the OS print queue (lp command)."""
+    """Prints the image file using the OS print queue."""
     try:
-        # Use 'lp' (Linux/macOS standard) to send the file to the OS printer queue
-        print_command = [
-            'lp', '-d', system_printer_name, '-o', 'fit-to-page', file_name
-        ]
-        print(f"🖨️ Sending print job to OS printer: **{system_printer_name}**")
-        run(print_command, check=True)
-        return True, "Print job sent successfully to OS."
-    except CalledProcessError as e:
-        return False, f"OS printing failed (code: {e.returncode}): {e.stderr or e}"
-    except FileNotFoundError:
-        return False, "The 'lp' command was not found (Check if CUPS/printer service is installed)."
+        if IS_WINDOWS:
+            import win32print
+            import win32ui
+            from PIL import ImageWin
+            
+            print(f"🖨️ Sending print job to Windows OS printer: **{system_printer_name}**")
+            hprinter = win32print.OpenPrinter(system_printer_name)
+            try:
+                hdc = win32ui.CreateDC()
+                hdc.CreatePrinterDC(system_printer_name)
+                
+                # PHYSICALWIDTH=110, PHYSICALHEIGHT=111
+                printer_width = hdc.GetDeviceCaps(110)
+                
+                img = Image.open(file_name)
+                
+                hdc.StartDoc(file_name)
+                hdc.StartPage()
+                
+                dib = ImageWin.Dib(img)
+                # Scale image to fit width while maintaining aspect ratio
+                ratio = printer_width / img.width
+                scaled_height = int(img.height * ratio)
+                
+                dib.draw(hdc.GetHandleOutput(), (0, 0, printer_width, scaled_height))
+                
+                hdc.EndPage()
+                hdc.EndDoc()
+                hdc.DeleteDC()
+                return True, "Print job sent successfully to Windows OS."
+            finally:
+                win32print.ClosePrinter(hprinter)
+        else:
+            # Use 'lp' (Linux/macOS standard) to send the file to the OS printer queue
+            print_command = [
+                'lp', '-d', system_printer_name, '-o', 'fit-to-page', file_name
+            ]
+            print(f"🖨️ Sending print job to macOS/Linux OS printer: **{system_printer_name}**")
+            run(print_command, check=True)
+            return True, "Print job sent successfully to OS."
+    except Exception as e:
+        return False, f"OS printing failed: {e}"
 
 
 def print_to_escpos(image_bytes, ip, port):
@@ -441,6 +482,88 @@ def test_print(printer):
     except Exception as e:
         return jsonify({"success": False, "message": f"Test print error: {e}"}), 500
 
+def execute_cashbox_kick(printer_name, rpc_id):
+    printers_config = load_printers()
+    if printer_name not in printers_config:
+        return jsonify({
+            "jsonrpc": "2.0", "id": rpc_id, 
+            "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": f"Printer '{printer_name}' not configured."}}
+        }), 200
+        
+    target_printer = printers_config[printer_name]
+    print_type = target_printer.get('type')
+    
+    print(f"🖨️ Kicking cash drawer for: **{printer_name}** (Type: {print_type})")
+    
+    success = False
+    message = ""
+    
+    if print_type == 'escpos':
+        ip = target_printer.get("ip")
+        port = target_printer.get("port")
+        try:
+            p = EscposNetworkPrinter(ip, port)
+            p.cashdraw(2)
+            p.close()
+            success = True
+        except Exception as e:
+            success = False
+            message = f"ESC/POS cashbox error: {e}"
+    elif print_type == 'system':
+        system_name = target_printer.get("system_name")
+        try:
+            # Standard ESC/POS pulse command: ESC p m t1 t2
+            kick_sequence = b'\x1B\x70\x00\x19\xFA'
+            
+            if IS_WINDOWS:
+                import win32print
+                hprinter = win32print.OpenPrinter(system_name)
+                try:
+                    win32print.StartDocPrinter(hprinter, 1, ("Cash Drawer Kick", None, "RAW"))
+                    win32print.StartPagePrinter(hprinter)
+                    win32print.WritePrinter(hprinter, kick_sequence)
+                    win32print.EndPagePrinter(hprinter)
+                    win32print.EndDocPrinter(hprinter)
+                finally:
+                    win32print.ClosePrinter(hprinter)
+            else:
+                print_command = ['lp', '-d', system_name, '-o', 'raw']
+                run(print_command, input=kick_sequence, check=True)
+                
+            success = True
+        except Exception as e:
+            success = False
+            message = f"System printer cashbox error: {e}"
+    else:
+        success = False
+        message = f"Cashbox open not supported for printer type: {print_type}"
+
+    if success:
+        return jsonify({"jsonrpc": "2.0", "id": rpc_id, "result": True}), 200
+    else:
+        return jsonify({
+            "jsonrpc": "2.0", "id": rpc_id, 
+            "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": message}}
+        }), 200
+
+
+@app.route('/hw_proxy/open_cashbox', methods=['POST'])
+def handle_open_cashbox():
+    try:
+        data = request.json
+        rpc_id = data.get('id', 1) if data else 1
+        printer_name = "POS_Printer"
+        if data and data.get('params', {}).get('printer_name'):
+             printer_name = data['params']['printer_name']
+             
+        return execute_cashbox_kick(printer_name, rpc_id)
+    except Exception as e:
+        rpc_id = request.json.get('id', 1) if request.is_json else 1
+        return jsonify({
+            "jsonrpc": "2.0", "id": rpc_id, 
+            "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": f"Proxy server error: {e}"}}
+        }), 200
+
 
 @app.route('/hw_proxy/default_printer_action', methods=['POST'])
 def handle_default_printer_action():
@@ -450,12 +573,16 @@ def handle_default_printer_action():
             return jsonify({"jsonrpc": "2.0", "id": 1, "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": "Empty body"}}}), 200
             
         rpc_id = data.get('id', 1)
-        printer_name = data.get('params', {}).get('data',{}).get('printer_name')
+        data_obj = data.get('params', {}).get('data', {})
+        printer_name = data_obj.get('printer_name')
         
         if not printer_name:
             printer_name = "POS_Printer"
             
-        receipt_data = data.get('params', {}).get('data', {}).get('receipt')
+        if data_obj.get('action') == 'cashbox':
+            return execute_cashbox_kick(printer_name, rpc_id)
+            
+        receipt_data = data_obj.get('receipt')
         
         printers_config = load_printers()
         if printer_name not in printers_config:
