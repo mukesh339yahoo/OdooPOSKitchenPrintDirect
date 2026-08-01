@@ -4,3 +4,5 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     ridhira_kitchen_print_api_key = fields.Char(related='pos_config_id.ridhira_kitchen_print_api_key', readonly=False)
+    pos_ridhira_explode_combos_in_kitchen = fields.Boolean(related='pos_config_id.ridhira_explode_combos_in_kitchen', readonly=False)
+
