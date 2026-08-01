@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.ridhira.pos.kitchen.print.direct</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pos_connected_devices_section']" position="inside">
+                <setting string="Direct Kitchen Print Proxy" help="Configure your SaaS Proxy API Key to enable Kitchen Printing without an IoT Box.">
+                    <field name="ridhira_kitchen_print_api_key" placeholder="Enter your API Key..."/>
+                    <div class="mt8">
+                        <a href="https://billing.yourdomain.com" target="_blank" class="btn-link">
+                            <i class="fa fa-arrow-right"/> Get your API Key (30-Day Free Trial)
+                        </a>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

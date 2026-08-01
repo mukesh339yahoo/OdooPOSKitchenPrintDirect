@@ -11,7 +11,9 @@
         'static/description/icon.png',
         'static/description/01_screenshot.png'
     ],
-    'data': [],
+    'data': [
+        'views/res_config_settings_views.xml',
+    ],
     'assets': {
         'point_of_sale._assets_pos': [
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',

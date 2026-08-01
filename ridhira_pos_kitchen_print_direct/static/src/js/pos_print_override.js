@@ -1,6 +1,8 @@
 /** @odoo-module **/
 
 import { HWPrinter } from "@point_of_sale/app/utils/printer/hw_printer"; 
+import { EpsonPrinter } from "@point_of_sale/app/utils/printer/epson_printer";
+import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 
 // --- 1. PATCH: HWPrinter to suppress error ---
@@ -19,12 +21,44 @@ patch(HWPrinter.prototype, {
             data.printer_name = this.config.name;
         }
         
+        // Inject SaaS API Key if available
+        if (window.ridhira_api_key) {
+            data.api_key = window.ridhira_api_key;
+        } else if (this.pos && this.pos.config && this.pos.config.ridhira_kitchen_print_api_key) {
+            data.api_key = this.pos.config.ridhira_kitchen_print_api_key;
+        }
+        
         try {
             const result = await super.sendAction(data);
+            
             // If the proxy returns our custom success flag, normalize it
             if (result && result.success) {
                 return true;
             }
+            // Handle Proxy SaaS License Expiration
+            if (result && result.error && result.error.message === "License Expired") {
+                console.error("[Ridhira Proxy] SaaS License Expired.");
+                if (window.posmodel && window.posmodel.popup) {
+                     window.posmodel.popup.add("ErrorPopup", {
+                        title: "Kitchen Print Failed: License Expired",
+                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                    });
+                } else if (this.pos && this.pos.env && this.pos.env.services && this.pos.env.services.popup) {
+                    this.pos.env.services.popup.add("ErrorPopup", {
+                        title: "Kitchen Print Failed: License Expired",
+                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                    });
+                } else if (this.pos && this.pos.popup) {
+                     this.pos.popup.add("ErrorPopup", {
+                        title: "Kitchen Print Failed: License Expired",
+                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                    });
+                } else {
+                    alert("Kitchen Print Failed: Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.");
+                }
+                return false;
+            }
+            
             return result || true;
         } catch (error) {
             // Suppress connection errors or handle them gracefully
@@ -38,7 +72,6 @@ patch(HWPrinter.prototype, {
 // In Odoo Enterprise, IoT Box selection might be restricted. This allows
 // users to configure an 'ePos Printer' with their Proxy IP, and we'll secretly
 // route that print job to our Python Proxy via the HWPrinter logic!
-import { EpsonPrinter } from "@point_of_sale/app/utils/printer/epson_printer";
 
 patch(EpsonPrinter.prototype, {
     setup(params) {
@@ -51,6 +84,8 @@ patch(EpsonPrinter.prototype, {
 
         // Create an internal HWPrinter instance pointing to our proxy
         this.ridhira_proxy_printer = new HWPrinter({ url: proxyUrl });
+        // Inject POS instance so HWPrinter can access the API Key
+        this.ridhira_proxy_printer.pos = this.pos || params.pos;
         console.log("[Ridhira Proxy] EpsonPrinter intercepted. Jobs will route to:", proxyUrl);
     },
 
@@ -74,5 +109,17 @@ patch(EpsonPrinter.prototype, {
             return await this.ridhira_proxy_printer.openCashbox();
         }
         return super.openCashbox(...arguments);
+    }
+});
+
+// --- 3. PATCH: PosStore to expose API Key globally ---
+patch(PosStore.prototype, {
+    async processServerData() {
+        await super.processServerData(...arguments);
+        console.log("[Ridhira Proxy] Config loaded:", this.config);
+        console.log("[Ridhira Proxy] API Key from config:", this.config ? this.config.ridhira_kitchen_print_api_key : "config is null");
+        if (this.config && this.config.ridhira_kitchen_print_api_key) {
+            window.ridhira_api_key = this.config.ridhira_kitchen_print_api_key;
+        }
     }
 });

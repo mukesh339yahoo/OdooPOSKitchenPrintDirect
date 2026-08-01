@@ -15,6 +15,10 @@ from flask import Flask, jsonify, request, render_template
 from xml.etree import ElementTree as ET
 from flask_cors import CORS
 from subprocess import run, CalledProcessError
+import jwt
+import requests
+import dateutil.parser
+import pytz
 
 IS_WINDOWS = platform.system() == "Windows"
 if IS_WINDOWS:
@@ -37,6 +41,8 @@ app = Flask(__name__)
 IMAGE_SAVE_PATH = 'print_images'
 DB_PATH = 'jobs.db'
 PRINTERS_FILE = os.path.join(os.path.dirname(__file__), "printers.json")
+LICENSE_SERVER_URL = "https://ridhira-license-server.mukeshsharma339.workers.dev"
+JWT_SECRET = "ridhira_kitchen_print_proxy_secret_key_2026" # IMPORTANT: Must match Cloudflare Worker secret
 
 if not os.path.exists(IMAGE_SAVE_PATH):
     os.makedirs(IMAGE_SAVE_PATH)
@@ -75,6 +81,13 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             file_path TEXT,
             error_message TEXT
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS license_cache (
+            api_key TEXT PRIMARY KEY,
+            token TEXT,
+            expires_at DATETIME
         )
     ''')
     conn.commit()
@@ -547,11 +560,82 @@ def execute_cashbox_kick(printer_name, rpc_id):
         }), 200
 
 
+# --- License Verification ---
+def verify_license(api_key):
+    print(f"[DEBUG] verify_license called with api_key: {api_key}")
+    if not api_key:
+        print("[DEBUG] No API Key provided.")
+        return False, "Missing API Key. Configure it in Odoo POS Settings."
+        
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT token, expires_at FROM license_cache WHERE api_key = ?", (api_key,))
+        row = c.fetchone()
+        
+        now = datetime.now(pytz.utc)
+        
+        # 1. Check Offline Cache
+        if row:
+            token = row[0]
+            expires_at_str = row[1]
+            try:
+                expires_at = dateutil.parser.parse(expires_at_str)
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=pytz.utc)
+                
+                if now < expires_at:
+                    print("[DEBUG] Valid offline token found.")
+                    # Mathematically verify the signature offline!
+                    decoded = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+                    if decoded.get('status') == 'active':
+                        conn.close()
+                        return True, "Valid"
+                else:
+                    print("[DEBUG] Offline token is expired.")
+            except Exception as e:
+                print(f"[DEBUG] Local token validation failed: {e}")
+                # Fall through to internet check if local validation fails
+        else:
+            print("[DEBUG] No offline token found for this key.")
+        
+        # 2. Make Internet Request (Token missing or expired)
+        print("[DEBUG] Checking SaaS License Server...")
+        response = requests.post(LICENSE_SERVER_URL, json={"api_key": api_key}, timeout=5)
+        print(f"[DEBUG] Cloudflare responded with HTTP {response.status_code}: {response.text}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 'active' and data.get('token'):
+                # Save to cache
+                c.execute("REPLACE INTO license_cache (api_key, token, expires_at) VALUES (?, ?, ?)", 
+                          (api_key, data['token'], data['expires_at']))
+                conn.commit()
+                conn.close()
+                return True, "Valid"
+        
+        conn.close()
+        return False, "License Expired"
+        
+    except Exception as e:
+        print(f"[DEBUG] License verification error: {e}")
+        return False, f"License Verification Error: {e}"
+
 @app.route('/hw_proxy/open_cashbox', methods=['POST'])
 def handle_open_cashbox():
     try:
         data = request.json
         rpc_id = data.get('id', 1) if data else 1
+        
+        # Verify License
+        api_key = data.get('params', {}).get('api_key')
+        is_valid, msg = verify_license(api_key)
+        if not is_valid:
+             return jsonify({
+                 "jsonrpc": "2.0", "id": rpc_id, 
+                 "error": {"code": 200, "message": "License Expired", "data": {"name": "ProxyError", "message": msg}}
+             }), 200
+             
         printer_name = "POS_Printer"
         if data and data.get('params', {}).get('printer_name'):
              printer_name = data['params']['printer_name']
@@ -574,6 +658,18 @@ def handle_default_printer_action():
             
         rpc_id = data.get('id', 1)
         data_obj = data.get('params', {}).get('data', {})
+        api_key = data_obj.get('api_key')
+        
+        print(f"[DEBUG] Incoming default printer action. Received API key: {api_key}")
+        
+        # Verify License
+        is_valid, msg = verify_license(api_key)
+        if not is_valid:
+             return jsonify({
+                 "jsonrpc": "2.0", "id": rpc_id, 
+                 "error": {"code": 200, "message": "License Expired", "data": {"name": "ProxyError", "message": msg}}
+             }), 200
+
         printer_name = data_obj.get('printer_name')
         
         if not printer_name:
