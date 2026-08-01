@@ -41,20 +41,20 @@ patch(HWPrinter.prototype, {
                 if (window.posmodel && window.posmodel.popup) {
                      window.posmodel.popup.add("ErrorPopup", {
                         title: "Kitchen Print Failed: License Expired",
-                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                        body: "Your Proxy Subscription has expired. Please visit ridhira.desigoogly.com to renew.",
                     });
                 } else if (this.pos && this.pos.env && this.pos.env.services && this.pos.env.services.popup) {
                     this.pos.env.services.popup.add("ErrorPopup", {
                         title: "Kitchen Print Failed: License Expired",
-                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                        body: "Your Proxy Subscription has expired. Please visit ridhira.desigoogly.com to renew.",
                     });
                 } else if (this.pos && this.pos.popup) {
                      this.pos.popup.add("ErrorPopup", {
                         title: "Kitchen Print Failed: License Expired",
-                        body: "Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.",
+                        body: "Your Proxy Subscription has expired. Please visit ridhira.desigoogly.com to renew.",
                     });
                 } else {
-                    alert("Kitchen Print Failed: Your Proxy Subscription has expired. Please visit billing.yourdomain.com to renew.");
+                    alert("Kitchen Print Failed: Your Proxy Subscription has expired. Please visit https://ridhira.desigoogly.com/ to renew.");
                 }
                 return false;
             }

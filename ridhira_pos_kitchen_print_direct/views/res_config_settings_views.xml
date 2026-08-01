@@ -9,7 +9,7 @@
                 <setting string="Direct Kitchen Print Proxy" help="Configure your SaaS Proxy API Key to enable Kitchen Printing without an IoT Box.">
                     <field name="ridhira_kitchen_print_api_key" placeholder="Enter your API Key..."/>
                     <div class="mt8">
-                        <a href="https://billing.yourdomain.com" target="_blank" class="btn-link">
+                        <a href="https://ridhira.desigoogly.com/" target="_blank" class="btn-link">
                             <i class="fa fa-arrow-right"/> Get your API Key (30-Day Free Trial)
                         </a>
                     </div>
