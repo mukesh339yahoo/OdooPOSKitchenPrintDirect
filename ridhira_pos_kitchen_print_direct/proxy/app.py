@@ -11,7 +11,7 @@ import platform
 from datetime import datetime
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, render_template_string
 from xml.etree import ElementTree as ET
 from flask_cors import CORS
 from subprocess import run, CalledProcessError
@@ -327,6 +327,52 @@ def print_to_qz_tray(receipt_data):
 @app.route('/')
 def index():
     return render_template('base.html', printers=load_printers())
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        try:
+            new_printers = json.loads(request.form.get('printers_json', '{}'))
+            save_printers(new_printers)
+            message = "Printers updated successfully!"
+        except Exception as e:
+            message = f"Error saving JSON: {e}"
+    else:
+        message = ""
+
+    current_printers = load_printers()
+    printers_json_str = json.dumps(current_printers, indent=4)
+    
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Ridhira Print Proxy Settings</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 800px; margin: auto; }
+            h2 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+            textarea { width: 100%; height: 400px; font-family: monospace; font-size: 14px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+            .btn { background-color: #28a745; color: white; padding: 12px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; font-weight: bold; }
+            .btn:hover { background-color: #218838; }
+            .msg { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; border: 1px solid #c3e6cb; margin-bottom: 15px; }
+            .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 15px; }
+        </style>
+    </head>
+    <body>
+        <h2>Printer Configuration</h2>
+        {% if message %}
+            <div class="{% if 'Error' in message %}error{% else %}msg{% endif %}">{{ message }}</div>
+        {% endif %}
+        <p>Edit the JSON below to configure your printers. Be careful not to break the JSON format!</p>
+        <form method="POST">
+            <textarea name="printers_json">{{ printers_json }}</textarea>
+            <br>
+            <button class="btn" type="submit">Save Changes</button>
+        </form>
+    </body>
+    </html>
+    """
+    return render_template_string(html, printers_json=printers_json_str, message=message)
 
 
 @app.route('/detect', methods=['GET'])
