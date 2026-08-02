@@ -365,7 +365,7 @@ def settings():
     <body>
         <div class="header-container">
             <h2>Printer Configuration</h2>
-            <a href="/" class="back-link">Home Dashboard</a>
+            <a href="{{ url_for('index') }}" class="back-link">Home Dashboard</a>
         </div>
         {% if message %}
             <div class="{% if 'Error' in message %}error{% else %}msg{% endif %}">{{ message }}</div>

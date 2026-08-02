@@ -216,7 +216,7 @@
         <header>
             <h1>Print Proxy Dashboard</h1>
             <div style="display: flex; gap: 1rem; align-items: center;">
-                <a href="/settings" style="color: var(--text-primary); text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.1); transition: all 0.2s; font-size: 0.875rem; font-weight: 500;">Settings</a>
+                <a href="{{ url_for('settings') }}" style="color: var(--text-primary); text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.1); transition: all 0.2s; font-size: 0.875rem; font-weight: 500;">Settings</a>
                 <div id="connection-status" style="color: var(--status-completed); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
                     <div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div>
                     Live Updates
@@ -259,7 +259,7 @@
     <script>
         async function fetchPrinters() {
             try {
-                const res = await fetch('/api/printers/status');
+                const res = await fetch("{{ url_for('api_printers_status') }}");
                 const data = await res.json();
                 
                 const container = document.getElementById('printers-container');
@@ -295,7 +295,7 @@
 
         async function fetchJobs() {
             try {
-                const res = await fetch('/api/jobs');
+                const res = await fetch("{{ url_for('api_get_jobs') }}");
                 const jobs = await res.json();
                 
                 const tbody = document.getElementById('jobs-table-body');
@@ -353,7 +353,7 @@
 
         async function testPrint(name) {
             try {
-                const res = await fetch(`/test_print/${name}`, {method: 'POST'});
+                const res = await fetch("{{ url_for('test_print', printer='') }}" + name, {method: 'POST'});
                 const data = await res.json();
                 if(!data.success) alert(data.message);
                 fetchPrinters();
@@ -365,7 +365,7 @@
 
         async function retryJob(jobId) {
             try {
-                await fetch(`/api/jobs/retry/${jobId}`, {method: 'POST'});
+                await fetch("{{ url_for('api_retry_job', job_id='') }}" + jobId, {method: 'POST'});
                 fetchJobs();
                 fetchPrinters();
             } catch(e) {
@@ -376,7 +376,7 @@
         async function cancelJob(jobId) {
             try {
                 if(confirm("Are you sure you want to cancel this job?")) {
-                    await fetch(`/api/jobs/cancel/${jobId}`, {method: 'POST'});
+                    await fetch("{{ url_for('api_cancel_job', job_id='') }}" + jobId, {method: 'POST'});
                     fetchJobs();
                     fetchPrinters();
                 }
