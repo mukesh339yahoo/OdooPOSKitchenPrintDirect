@@ -38,9 +38,10 @@ from waitress import serve
 app = Flask(__name__)
 
 # --- Configuration ---
-IMAGE_SAVE_PATH = 'print_images'
-DB_PATH = 'jobs.db'
-PRINTERS_FILE = os.path.join(os.path.dirname(__file__), "printers.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGE_SAVE_PATH = os.path.join(BASE_DIR, 'print_images')
+DB_PATH = os.path.join(BASE_DIR, 'jobs.db')
+PRINTERS_FILE = os.path.join(BASE_DIR, "printers.json")
 LICENSE_SERVER_URL = "https://ridhira-license-server.mukeshsharma339.workers.dev"
 JWT_SECRET = "ridhira_kitchen_print_proxy_secret_key_2026" # IMPORTANT: Must match Cloudflare Worker secret
 
