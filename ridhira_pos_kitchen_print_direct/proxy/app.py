@@ -778,10 +778,10 @@ def handle_default_printer_action():
         }), 200
 
 
+# Initialize the queue manager globally so it works in WSGI mode
+queue_manager = PrintQueueManager()
+
 if __name__ == '__main__':
-    # Initialize the queue manager when starting the server
-    queue_manager = PrintQueueManager()
-    
     # Run the Flask app with Waitress WSGI server
     print("🚀 Starting proxy with Waitress on port 9100...")
     serve(app, host='0.0.0.0', port=9100)
