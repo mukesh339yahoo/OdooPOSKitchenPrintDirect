@@ -8,7 +8,7 @@
     'website': 'https://ridhira.desigoogly.com',
     'category': 'Point of Sale',
     'depends': ['point_of_sale'],
-    'live_test_url': 'https://ridhira.desigoogly.com/prinproxydemo/',
+    'live_test_url': 'https://ridhira.desigoogly.com/printproxydemo/',
     'images': [
         'static/description/icon.png',
         'static/description/01_screenshot.png'
