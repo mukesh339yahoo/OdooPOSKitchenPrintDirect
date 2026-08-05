@@ -232,15 +232,82 @@ patch(PosStore.prototype, {
                             }
                             if (tableNameStr === "[object Object]") tableNameStr = "Unknown Table";
                             
+                            // Extract Modifiers and Price from matched OrderLine or Change
+                            let priceStr = "";
+                            let modifiers = [];
+                            
+                            try {
+                                let orderLines = [];
+                                if (typeof order.getOrderlines === 'function') orderLines = order.getOrderlines();
+                                else if (typeof order.get_orderlines === 'function') orderLines = order.get_orderlines();
+                                else orderLines = order.lines || order.orderlines || [];
+                                
+                                let matchedLine = null;
+                                if (change.uuid) {
+                                    matchedLine = orderLines.find(l => l.uuid === change.uuid);
+                                } else if (change.line_uuid) {
+                                    matchedLine = orderLines.find(l => l.uuid === change.line_uuid);
+                                }
+                                
+                                if (matchedLine) {
+                                    let rawPrice = null;
+                                    if (typeof matchedLine.get_price_with_tax === 'function') {
+                                        rawPrice = matchedLine.get_price_with_tax();
+                                    } else if (matchedLine.displayPrice !== undefined) {
+                                        rawPrice = matchedLine.displayPrice;
+                                    } else if (matchedLine.priceIncl !== undefined) {
+                                        rawPrice = matchedLine.priceIncl;
+                                    } else if (matchedLine.price_unit !== undefined) {
+                                        rawPrice = matchedLine.price_unit;
+                                    } else if (typeof matchedLine.getDisplayPrice === 'function') {
+                                        rawPrice = matchedLine.getDisplayPrice();
+                                    }
+                                    
+                                    if (rawPrice !== null) {
+                                        const formattedPrice = window.posmodel && window.posmodel.env && window.posmodel.env.utils && window.posmodel.env.utils.formatCurrency 
+                                            ? window.posmodel.env.utils.formatCurrency(rawPrice) 
+                                            : "$" + parseFloat(rawPrice).toFixed(2);
+                                        priceStr = formattedPrice;
+                                    }
+                                }
+                            } catch (e) {}
+                            
+                            // Respect the print_price_on_label toggle
+                            const shouldPrintPrice = printer.print_price_on_label !== false && printer.config?.print_price_on_label !== false;
+                            if (!shouldPrintPrice) {
+                                priceStr = "";
+                            }
+                            
+                            // Use Odoo 19 native attribute value names
+                            if (Array.isArray(change.attribute_value_names) && change.attribute_value_names.length > 0) {
+                                modifiers.push(...change.attribute_value_names);
+                            }
+                            // Fallbacks for older versions
+                            if (modifiers.length === 0 && Array.isArray(change.name_wrap) && change.name_wrap.length > 1) {
+                                modifiers.push(change.name_wrap.slice(1).join(" "));
+                            }
+                            
+                            if (change.customer_note) {
+                                modifiers.push(`Note: ${change.customer_note}`);
+                            } else if (change.note) {
+                                modifiers.push(`Note: ${change.note}`);
+                            }
+                            
+                            const modifiersStr = modifiers.join(" | ");
+                            
                             const oName = (order.name && order.name !== '/') ? order.name : (order.tracking_number || order.trackingNumber || order.uid || "Order");
+                            const isTakeout = order.takeaway ? "Takeout" : (tableNameStr && tableNameStr !== "Takeout" && tableNameStr !== "Unknown Table" ? "Dine In" : "Takeout");
                             
                             const cupData = {
                                 order_name: oName,
-                                table_no: tableNameStr ? `Table: ${tableNameStr}` : "Takeout",
+                                table_no: tableNameStr,
+                                is_takeout: isTakeout,
                                 order_time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                                 sequence: `${i}/${qty}`,
                                 is_cancelled: isCancelled,
                                 change: change,
+                                modifiers: modifiersStr,
+                                price: priceStr,
                                 label_width: printer.config?.label_width || printer.label_width || 400,
                                 label_height: printer.config?.label_height || printer.label_height || 300
                             };

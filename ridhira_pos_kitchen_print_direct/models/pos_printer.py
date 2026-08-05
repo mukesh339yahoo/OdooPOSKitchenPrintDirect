@@ -21,11 +21,18 @@ class PosPrinter(models.Model):
         help="Height of the thermal sticker canvas in pixels (e.g. 300)."
     )
 
+    print_price_on_label = fields.Boolean(
+        string="Print Price on Label",
+        default=True,
+        help="If checked, the price of the item will be printed on the sticker label."
+    )
+
     @api.model
     def _load_pos_data_fields(self, config_id):
         result = super()._load_pos_data_fields(config_id)
         result.append('is_label_printer')
         result.append('label_width')
         result.append('label_height')
+        result.append('print_price_on_label')
         return result
 

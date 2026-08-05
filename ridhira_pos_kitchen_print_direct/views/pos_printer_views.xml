@@ -9,6 +9,7 @@
                 <field name="is_label_printer" widget="boolean_toggle"/>
                 <field name="label_width" invisible="not is_label_printer"/>
                 <field name="label_height" invisible="not is_label_printer"/>
+                <field name="print_price_on_label" widget="boolean_toggle" invisible="not is_label_printer"/>
             </xpath>
         </field>
     </record>

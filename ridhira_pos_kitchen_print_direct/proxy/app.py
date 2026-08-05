@@ -520,8 +520,7 @@ def generate_test_image_bytes(printer_name):
 
 def render_boba_label(cup_data):
     """
-    Renders a dynamic label for Boba/Sticker printing.
-    Expects cup_data to have: order_name, sequence, change (the item details).
+    Renders a dynamic label for Boba/Sticker printing using the new layout standard.
     """
     # Extract configured dimensions or default to 400x300
     img_width = int(cup_data.get('label_width', 400))
@@ -531,74 +530,118 @@ def render_boba_label(cup_data):
     d = ImageDraw.Draw(img)
     
     try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        bold_font_path = os.path.join(current_dir, 'fonts', 'Roboto-Bold.ttf')
-        regular_font_path = os.path.join(current_dir, 'fonts', 'Roboto-Regular.ttf')
+        font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
         
-        if os.path.exists(bold_font_path) and os.path.exists(regular_font_path):
-            font_large = ImageFont.truetype(bold_font_path, 36)
-            font_medium = ImageFont.truetype(regular_font_path, 24)
-            font_small = ImageFont.truetype(regular_font_path, 18)
-        else:
-            raise IOError("Fonts not found")
+        # Load fonts at various sizes
+        font_large = ImageFont.truetype(os.path.join(font_dir, 'Roboto-Bold.ttf'), 36)
+        font_bold_medium = ImageFont.truetype(os.path.join(font_dir, 'Roboto-Bold.ttf'), 26)
+        font_regular_medium = ImageFont.truetype(os.path.join(font_dir, 'Roboto-Regular.ttf'), 26)
+        font_regular_small = ImageFont.truetype(os.path.join(font_dir, 'Roboto-Regular.ttf'), 22)
     except IOError:
-        print("[WARNING] Roboto fonts not found! Falling back to default blocky font.")
-        font_large = font_medium = font_small = ImageFont.load_default()
+        font_large = font_bold_medium = font_regular_medium = font_regular_small = ImageFont.load_default()
 
-    order_name = cup_data.get('order_name', 'Order')
+    # Data extraction
+    order_name = cup_data.get('order_name', '')
+    seq = cup_data.get('sequence', '')
+    is_takeout = cup_data.get('is_takeout', 'Takeout')
     table_no = cup_data.get('table_no', '')
     order_time = cup_data.get('order_time', '')
-    sequence = cup_data.get('sequence', '1/1')
     change = cup_data.get('change', {})
-    
-    # Extract item name. In Odoo POS, it's often change.name or change.product_name
-    item_name = change.get('name') or change.get('product_name') or 'Unknown Item'
-    note = change.get('note', '')
+    drink_name = change.get('name', 'Unknown Drink')
     is_cancelled = cup_data.get('is_cancelled', False)
     
+    # Strip any variant parenthesis from the base drink name since modifiers handles it
+    if '(' in drink_name:
+        drink_name = drink_name.split('(')[0].strip()
+        
+    modifiers = cup_data.get('modifiers', '')
+    price = cup_data.get('price', '')
+    
+    # Starting Y coordinate
     y = 10
     
-    if is_cancelled:
-        d.text((10, y), "** CANCELLED **", fill=0, font=font_large)
+    # 1. Header: Order number and sequence at top right
+    # Left side: Takeout/Dine In (Point 2)
+    d.text((10, y), f"{is_takeout}", font=font_bold_medium, fill=0)
+    
+    # Right side: Order # and Sequence
+    order_header = f"{order_name}   [{seq}]"
+    header_bbox = d.textbbox((0, 0), order_header, font=font_bold_medium)
+    header_w = header_bbox[2] - header_bbox[0]
+    d.text((img_width - header_w - 15, y), order_header, font=font_bold_medium, fill=0)
+    
+    y += 35
+    
+    # 3. Table and Time of Order
+    if is_takeout != "Takeout" and table_no:
+        d.text((10, y), f"{table_no}", font=font_regular_medium, fill=0)
+    
+    time_bbox = d.textbbox((0, 0), order_time, font=font_regular_medium)
+    time_w = time_bbox[2] - time_bbox[0]
+    d.text((img_width - time_w - 15, y), order_time, font=font_regular_medium, fill=0)
+    
+    y += 40
+    d.line([(10, y), (img_width - 15, y)], fill=0, width=2)
+    y += 15
+    
+    # 4. Drink Name (Prominent/Bold)
+    # Wrap drink name if it's too long
+    words = drink_name.split()
+    lines = []
+    current_line = ""
+    for w in words:
+        test_line = current_line + w + " "
+        bbox = d.textbbox((0,0), test_line, font=font_large)
+        if bbox[2] - bbox[0] > (img_width - 20) and current_line:
+            lines.append(current_line.strip())
+            current_line = w + " "
+        else:
+            current_line = test_line
+    if current_line:
+        lines.append(current_line.strip())
+        
+    for line in lines:
+        d.text((10, y), line, font=font_large, fill=0)
         y += 40
         
-    # Top bar: Order # and Sequence
-    d.text((10, y), f"Order #{order_name}", fill=0, font=font_medium)
+    y += 5
     
-    # Right align sequence
-    seq_bbox = d.textbbox((0, 0), sequence, font=font_medium)
-    seq_w = seq_bbox[2] - seq_bbox[0]
-    d.text((img_width - seq_w - 10, y), sequence, fill=0, font=font_medium)
-    
-    y += 30
-    
-    # Second bar: Table No and Time
-    metadata_text = f"{table_no}   {order_time}"
-    d.text((10, y), metadata_text, fill=0, font=font_small)
-    
-    y += 25
-    d.line([(10, y), (img_width - 10, y)], fill=0, width=2)
-    y += 10
-    
-    # Main Drink Name (Wrap if too long)
-    wrapped_name = textwrap.wrap(item_name, width=18)
-    for line in wrapped_name:
-        d.text((10, y), line, fill=0, font=font_large)
-        y += 40
-        
-    y += 10
-    
-    # Modifiers/Notes
-    if note:
-        wrapped_note = textwrap.wrap(note, width=25)
-        for line in wrapped_note:
-            d.text((20, y), f"- {line}", fill=0, font=font_medium)
-            y += 30
+    # 5. Modifiers
+    if modifiers:
+        # Wrap modifiers to fit canvas width
+        mod_words = modifiers.replace(" | ", ", ").split()
+        mod_lines = []
+        mod_curr = ""
+        for w in mod_words:
+            test_line = mod_curr + w + " "
+            bbox = d.textbbox((0,0), test_line, font=font_regular_small)
+            if bbox[2] - bbox[0] > (img_width - 20) and mod_curr:
+                mod_lines.append(mod_curr.strip())
+                mod_curr = w + " "
+            else:
+                mod_curr = test_line
+        if mod_curr:
+            mod_lines.append(mod_curr.strip())
             
-    # Draw border to define sticker boundaries (optional, but helps visualization)
-    d.rectangle([(0, 0), (img_width-1, img_height-1)], outline=0, width=2)
+        for line in mod_lines:
+            d.text((20, y), f"{line}", font=font_regular_small, fill=0)
+            y += 25
+            
+    y += 10
     
-    return img
+    # 6. Price
+    if price:
+        price_txt = f"{price}"
+        d.text((10, y), price_txt, font=font_bold_medium, fill=0)
+        
+    # Cancelled stamp if needed
+    if is_cancelled:
+        y += 35
+        d.text((10, y), "*** CANCELLED ***", font=font_large, fill=0)
+
+    # Convert to pure black and white binary format for EscPos image printing
+    img_binary = img.convert('1')
+    return img_binary
 
 @app.route('/test_print/<printer>', methods=['POST'])
 def test_print(printer):
