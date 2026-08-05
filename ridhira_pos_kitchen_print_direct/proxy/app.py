@@ -19,6 +19,7 @@ import jwt
 import requests
 import dateutil.parser
 import pytz
+import textwrap
 
 IS_WINDOWS = platform.system() == "Windows"
 if IS_WINDOWS:
@@ -517,6 +518,88 @@ def generate_test_image_bytes(printer_name):
         print(f"Error generating test image: {e}")
         return None
 
+def render_boba_label(cup_data):
+    """
+    Renders a dynamic label for Boba/Sticker printing.
+    Expects cup_data to have: order_name, sequence, change (the item details).
+    """
+    # Extract configured dimensions or default to 400x300
+    img_width = int(cup_data.get('label_width', 400))
+    img_height = int(cup_data.get('label_height', 300))
+    
+    img = Image.new('L', (img_width, img_height), color=255)
+    d = ImageDraw.Draw(img)
+    
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        bold_font_path = os.path.join(current_dir, 'fonts', 'Roboto-Bold.ttf')
+        regular_font_path = os.path.join(current_dir, 'fonts', 'Roboto-Regular.ttf')
+        
+        if os.path.exists(bold_font_path) and os.path.exists(regular_font_path):
+            font_large = ImageFont.truetype(bold_font_path, 36)
+            font_medium = ImageFont.truetype(regular_font_path, 24)
+            font_small = ImageFont.truetype(regular_font_path, 18)
+        else:
+            raise IOError("Fonts not found")
+    except IOError:
+        print("[WARNING] Roboto fonts not found! Falling back to default blocky font.")
+        font_large = font_medium = font_small = ImageFont.load_default()
+
+    order_name = cup_data.get('order_name', 'Order')
+    table_no = cup_data.get('table_no', '')
+    order_time = cup_data.get('order_time', '')
+    sequence = cup_data.get('sequence', '1/1')
+    change = cup_data.get('change', {})
+    
+    # Extract item name. In Odoo POS, it's often change.name or change.product_name
+    item_name = change.get('name') or change.get('product_name') or 'Unknown Item'
+    note = change.get('note', '')
+    is_cancelled = cup_data.get('is_cancelled', False)
+    
+    y = 10
+    
+    if is_cancelled:
+        d.text((10, y), "** CANCELLED **", fill=0, font=font_large)
+        y += 40
+        
+    # Top bar: Order # and Sequence
+    d.text((10, y), f"Order #{order_name}", fill=0, font=font_medium)
+    
+    # Right align sequence
+    seq_bbox = d.textbbox((0, 0), sequence, font=font_medium)
+    seq_w = seq_bbox[2] - seq_bbox[0]
+    d.text((img_width - seq_w - 10, y), sequence, fill=0, font=font_medium)
+    
+    y += 30
+    
+    # Second bar: Table No and Time
+    metadata_text = f"{table_no}   {order_time}"
+    d.text((10, y), metadata_text, fill=0, font=font_small)
+    
+    y += 25
+    d.line([(10, y), (img_width - 10, y)], fill=0, width=2)
+    y += 10
+    
+    # Main Drink Name (Wrap if too long)
+    wrapped_name = textwrap.wrap(item_name, width=18)
+    for line in wrapped_name:
+        d.text((10, y), line, fill=0, font=font_large)
+        y += 40
+        
+    y += 10
+    
+    # Modifiers/Notes
+    if note:
+        wrapped_note = textwrap.wrap(note, width=25)
+        for line in wrapped_note:
+            d.text((20, y), f"- {line}", fill=0, font=font_medium)
+            y += 30
+            
+    # Draw border to define sticker boundaries (optional, but helps visualization)
+    d.rectangle([(0, 0), (img_width-1, img_height-1)], outline=0, width=2)
+    
+    return img
+
 @app.route('/test_print/<printer>', methods=['POST'])
 def test_print(printer):
     try:
@@ -748,7 +831,18 @@ def handle_default_printer_action():
             
         try:
             image_bytes = base64.b64decode(receipt_data)
-            img = Image.open(BytesIO(image_bytes))
+            
+            # Check for Boba JSON payload
+            if image_bytes.startswith(b"BOBA_LABEL_JSON:"):
+                print(f"[DEBUG] Boba Label JSON format detected! Decoding payload...")
+                json_str = image_bytes.split(b":", 1)[1].decode('utf-8')
+                print(f"[DEBUG] Boba Label JSON payload received: {json_str}")
+                cup_data = json.loads(json_str)
+                img = render_boba_label(cup_data)
+                print(f"[DEBUG] Successfully rendered Boba label image canvas for {cup_data.get('order_name', 'Unknown')}.")
+            else:
+                img = Image.open(BytesIO(image_bytes))
+                
             timestamp_ms = int(time.time() * 1000)
             job_id = f"receipt_{rpc_id}_{printer_name}_{timestamp_ms}"
             file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')

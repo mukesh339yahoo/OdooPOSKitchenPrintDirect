@@ -5,7 +5,7 @@
         "ip": "127.0.0.1",
         "port": 9100
     },
-    "Kitchen_Printer": {
+    "BAR_Printer1": {
         "kitchen": true,
         "type": "system",
         "system_name": "Dummy_Printer_1"

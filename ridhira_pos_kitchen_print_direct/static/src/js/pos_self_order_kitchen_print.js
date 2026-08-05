@@ -153,13 +153,153 @@ patch(PosStore.prototype, {
     },
 
     async printChanges(order, orderChange, reprint = false, printers = this.unwatched.printers) {
-        console.log("Ridhira: printChanges executing!", {
-            orderId: order.id,
-            orderChange,
-            reprint,
-            printers: printers?.length
-        });
-        const result = await super.printChanges(...arguments);
+        console.log("Ridhira: printChanges executing!", { orderId: order.id, orderChange, reprint, printers: printers?.length });
+        
+        let result = true;
+        const normalPrinters = [];
+        const labelPrinters = [];
+        
+        for (const p of (printers || [])) {
+            const isLabel = (p.config && p.config.is_label_printer) || p.is_label_printer || (p.config && p.config.name && p.config.name.includes("KITCHEN_PRINTERESCPOS"));
+            console.log(`[Ridhira POS] Evaluating printer: ${p.config?.name || p.name || 'Unknown'}. isLabel Evaluated to: ${isLabel}`, p);
+            if (isLabel) {
+                console.log(`[Ridhira POS] Routing to Label Printers array: ${p.config?.name || 'Unknown'}`);
+                labelPrinters.push(p);
+            } else {
+                console.log(`[Ridhira POS] Routing to Normal Printers array: ${p.config?.name || 'Unknown'}`);
+                normalPrinters.push(p);
+            }
+        }
+        
+        // 1. Process Normal Printers via Odoo's native QWeb rendering
+        if (normalPrinters.length > 0) {
+            const normalResult = await super.printChanges(order, orderChange, reprint, normalPrinters);
+            result = result && normalResult;
+        }
+        
+        // 2. Process Label Printers by splitting quantities into individual cups
+        if (labelPrinters.length > 0) {
+            for (const printer of labelPrinters) {
+                // We only care about new and cancelled items for labels (noteUpdates usually apply to existing items, but for labels it's hard to update a physical sticker)
+                const processChanges = async (changesList, isCancelled) => {
+                    for (const change of (changesList || [])) {
+                        const qty = Math.abs(change.qty || change.quantity || 1); // Extract absolute quantity
+                        for (let i = 1; i <= qty; i++) {
+                            // Odoo 19 property fallback for Table ID and Order Name
+                            let tableNameStr = "";
+                            
+                            // 1. Try Odoo 19 native getTable()
+                            if (typeof order.getTable === 'function') {
+                                const tableObj = order.getTable();
+                                if (tableObj) {
+                                    if (tableObj.floor_id && tableObj.floor_id.name) tableNameStr = `${tableObj.floor_id.name} - `;
+                                    else if (tableObj.floor && tableObj.floor.name) tableNameStr = `${tableObj.floor.name} - `;
+                                    
+                                    if (typeof tableObj.getName === 'function') tableNameStr += tableObj.getName();
+                                    else tableNameStr += tableObj.name || tableObj.id;
+                                }
+                            }
+                            
+                            // 2. Fallback for primitive ID parsing
+                            if (!tableNameStr) {
+                                const tObj = order.table || order.table_id || order.self_ordering_table_id || order.tableId;
+                                if (tObj) {
+                                    if (typeof tObj === 'object') {
+                                        tableNameStr = tObj.name || tObj.table_name || tObj[1] || (tObj.id ? String(tObj.id) : "");
+                                    } else {
+                                        let foundTable = null;
+                                        try {
+                                            // Try to lookup the table by ID in Odoo 19 POS models
+                                            if (this.models && this.models['restaurant.table']) {
+                                                const tableModel = this.models['restaurant.table'];
+                                                if (typeof tableModel.get === 'function') foundTable = tableModel.get(tObj);
+                                                else if (typeof tableModel.getAll === 'function') {
+                                                    const tables = tableModel.getAll();
+                                                    foundTable = tables.find(t => t.id == tObj);
+                                                }
+                                            }
+                                        } catch(e) {}
+                                        
+                                        if (foundTable && foundTable.name) {
+                                            tableNameStr = foundTable.name;
+                                        } else {
+                                            const tMap = window.posmodel && window.posmodel.tables_by_id;
+                                            if (tMap && tMap[tObj]) tableNameStr = tMap[tObj].name;
+                                            else tableNameStr = String(tObj);
+                                        }
+                                    }
+                                }
+                            }
+                            if (tableNameStr === "[object Object]") tableNameStr = "Unknown Table";
+                            
+                            const oName = (order.name && order.name !== '/') ? order.name : (order.tracking_number || order.trackingNumber || order.uid || "Order");
+                            
+                            const cupData = {
+                                order_name: oName,
+                                table_no: tableNameStr ? `Table: ${tableNameStr}` : "Takeout",
+                                order_time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                                sequence: `${i}/${qty}`,
+                                is_cancelled: isCancelled,
+                                change: change,
+                                label_width: printer.config?.label_width || printer.label_width || 400,
+                                label_height: printer.config?.label_height || printer.label_height || 300
+                            };
+                            
+                            try {
+                                console.log(`[Ridhira POS] Sending Cup ${i} of ${qty} for ${cupData.order_name} to label printer...`, cupData);
+                                const payloadStr = "BOBA_LABEL_JSON:" + JSON.stringify(cupData);
+                                const base64Payload = btoa(unescape(encodeURIComponent(payloadStr)));
+                                
+                                const hwPrinter = printer.ridhira_proxy_printer || printer;
+                                
+                                // Crucial: Since we bypassed EpsonPrinter.printReceipt, we must inject the printer name manually!
+                                const targetPrinterName = (printer.config && printer.config.name) || printer.name || "POS_Printer";
+                                hwPrinter.proxy_printer_name = targetPrinterName;
+                                
+                                if (typeof hwPrinter.sendAction === 'function') {
+                                    // Odoo 19 bypass: send directly to Proxy without htmlToCanvas rendering
+                                    await hwPrinter.sendAction({
+                                        action: "print_receipt",
+                                        receipt: base64Payload,
+                                        printer_name: targetPrinterName
+                                    });
+                                } else {
+                                    // Fallback
+                                    await printer.printReceipt(base64Payload);
+                                }
+                                console.log(`[Ridhira POS] Successfully dispatched label payload for Cup ${i}`);
+                            } catch (e) {
+                                console.error("[Ridhira Proxy] Failed to send Boba label to printer:", e);
+                                result = false;
+                            }
+                        }
+                    }
+                };
+                
+                // Safely flatten changes from Odoo 17/18/19 formats
+                let allNew = [];
+                let allCancelled = [];
+                
+                if (Array.isArray(orderChange)) {
+                    for (const oc of orderChange) {
+                        if (oc.new || oc.cancelled) {
+                            if (oc.new) allNew = allNew.concat(oc.new);
+                            if (oc.cancelled) allCancelled = allCancelled.concat(oc.cancelled);
+                        } else {
+                            if (oc.qty > 0) allNew.push(oc);
+                            else if (oc.qty < 0) allCancelled.push(oc);
+                        }
+                    }
+                } else if (orderChange) {
+                    if (orderChange.new) allNew = allNew.concat(orderChange.new);
+                    if (orderChange.cancelled) allCancelled = allCancelled.concat(orderChange.cancelled);
+                }
+                
+                await processChanges(allNew, false);
+                await processChanges(allCancelled, true);
+            }
+        }
+        
         console.log(`Ridhira: printChanges completed with result: ${result}`);
         return result;
     }
