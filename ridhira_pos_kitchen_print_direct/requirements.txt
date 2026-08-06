@@ -6,3 +6,4 @@ pillow
 flask-cors
 pywin32; sys_platform == 'win32'
 PyJWT
+python-dateutil
