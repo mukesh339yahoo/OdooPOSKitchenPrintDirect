@@ -343,12 +343,22 @@ patch(PosStore.prototype, {
                     }
                 };
                 
+                let filteredChanges = orderChange;
+                const categories = (printer.config && printer.config.product_categories_ids) || printer.product_categories_ids || [];
+                if (categories.length > 0 && typeof this.filterChangeByCategories === 'function') {
+                    try {
+                        filteredChanges = this.filterChangeByCategories(categories, orderChange);
+                    } catch(e) {
+                        console.warn("[Ridhira POS] Error filtering by categories for label printer", e);
+                    }
+                }
+
                 // Safely flatten changes from Odoo 17/18/19 formats
                 let allNew = [];
                 let allCancelled = [];
                 
-                if (Array.isArray(orderChange)) {
-                    for (const oc of orderChange) {
+                if (Array.isArray(filteredChanges)) {
+                    for (const oc of filteredChanges) {
                         if (oc.new || oc.cancelled) {
                             if (oc.new) allNew = allNew.concat(oc.new);
                             if (oc.cancelled) allCancelled = allCancelled.concat(oc.cancelled);
@@ -357,9 +367,9 @@ patch(PosStore.prototype, {
                             else if (oc.qty < 0) allCancelled.push(oc);
                         }
                     }
-                } else if (orderChange) {
-                    if (orderChange.new) allNew = allNew.concat(orderChange.new);
-                    if (orderChange.cancelled) allCancelled = allCancelled.concat(orderChange.cancelled);
+                } else if (filteredChanges) {
+                    if (filteredChanges.new) allNew = allNew.concat(filteredChanges.new);
+                    if (filteredChanges.cancelled) allCancelled = allCancelled.concat(filteredChanges.cancelled);
                 }
                 
                 await processChanges(allNew, false);
