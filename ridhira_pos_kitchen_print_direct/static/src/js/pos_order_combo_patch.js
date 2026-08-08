@@ -24,6 +24,7 @@ patch(PosStore.prototype, {
         };
 
         const filterChanges = (changes) => {
+            if (!changes || !Array.isArray(changes)) return [];
             // Find which Combo Parents match the printer's category
             const validParentUuids = new Set(
                 changes
@@ -47,10 +48,16 @@ patch(PosStore.prototype, {
             );
         };
 
-        return {
-            new: filterChanges(currentOrderChange["new"]),
-            cancelled: filterChanges(currentOrderChange["cancelled"]),
-            noteUpdate: filterChanges(currentOrderChange["noteUpdate"]),
-        };
+        if (Array.isArray(currentOrderChange)) {
+            // Odoo 19 Array format
+            return filterChanges(currentOrderChange);
+        } else {
+            // Odoo 17/18 Object format
+            return {
+                new: filterChanges(currentOrderChange["new"]),
+                cancelled: filterChanges(currentOrderChange["cancelled"]),
+                noteUpdate: filterChanges(currentOrderChange["noteUpdate"]),
+            };
+        }
     }
 });
