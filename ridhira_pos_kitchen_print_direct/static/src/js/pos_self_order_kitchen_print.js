@@ -343,22 +343,12 @@ patch(PosStore.prototype, {
                     }
                 };
                 
-                let filteredChanges = orderChange;
-                const categories = (printer.config && printer.config.product_categories_ids) || printer.product_categories_ids || [];
-                if (categories.length > 0 && typeof this.filterChangeByCategories === 'function') {
-                    try {
-                        filteredChanges = this.filterChangeByCategories(categories, orderChange);
-                    } catch(e) {
-                        console.warn("[Ridhira POS] Error filtering by categories for label printer", e);
-                    }
-                }
-
-                // Safely flatten changes from Odoo 17/18/19 formats
+                // Safely flatten changes from Odoo 17/18/19 formats FIRST
                 let allNew = [];
                 let allCancelled = [];
                 
-                if (Array.isArray(filteredChanges)) {
-                    for (const oc of filteredChanges) {
+                if (Array.isArray(orderChange)) {
+                    for (const oc of orderChange) {
                         if (oc.new || oc.cancelled) {
                             if (oc.new) allNew = allNew.concat(oc.new);
                             if (oc.cancelled) allCancelled = allCancelled.concat(oc.cancelled);
@@ -367,9 +357,53 @@ patch(PosStore.prototype, {
                             else if (oc.qty < 0) allCancelled.push(oc);
                         }
                     }
-                } else if (filteredChanges) {
-                    if (filteredChanges.new) allNew = allNew.concat(filteredChanges.new);
-                    if (filteredChanges.cancelled) allCancelled = allCancelled.concat(filteredChanges.cancelled);
+                } else if (orderChange) {
+                    if (orderChange.new) allNew = allNew.concat(orderChange.new);
+                    if (orderChange.cancelled) allCancelled = allCancelled.concat(orderChange.cancelled);
+                }
+
+                // MANUALLY FILTER BY CATEGORY TO PREVENT ODOO 19 CRASHES
+                const categories = (printer.config && printer.config.product_categories_ids) || printer.product_categories_ids || [];
+                if (categories.length > 0) {
+                    const matchesCategories = (change) => {
+                        let product;
+                        try {
+                            if (this.models && this.models['product.product']) {
+                                product = this.models['product.product'].get(change.product_id);
+                            } else if (window.posmodel && window.posmodel.db) {
+                                product = window.posmodel.db.get_product_by_id(change.product_id);
+                            }
+                        } catch(e) {}
+                        
+                        if (!product) return true;
+                        
+                        let categIds = [];
+                        if (product.parentPosCategIds) categIds = product.parentPosCategIds;
+                        else if (product.pos_categ_ids) categIds = product.pos_categ_ids;
+                        else if (product.pos_categ_id) {
+                            categIds = Array.isArray(product.pos_categ_id) ? [product.pos_categ_id[0]] : [product.pos_categ_id];
+                        }
+                        
+                        for (const cid of categIds) {
+                            if (categories.includes(cid)) return true;
+                        }
+                        return false;
+                    };
+                    
+                    const validParentUuids = new Set(
+                        [...allNew, ...allCancelled]
+                            .filter(change => change.isCombo && matchesCategories(change))
+                            .map(change => change.uuid)
+                    );
+                    
+                    const safeFilter = (change) => {
+                        if (change.isCombo) return matchesCategories(change);
+                        if (change.combo_parent_uuid) return validParentUuids.has(change.combo_parent_uuid);
+                        return matchesCategories(change);
+                    };
+
+                    allNew = allNew.filter(safeFilter);
+                    allCancelled = allCancelled.filter(safeFilter);
                 }
                 
                 await processChanges(allNew, false);
