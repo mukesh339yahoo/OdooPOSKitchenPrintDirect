@@ -397,10 +397,20 @@ patch(PosStore.prototype, {
                     );
                     
                     const safeFilter = (change) => {
-                        if (change.isCombo) return matchesCategories(change);
-                        if (change.combo_parent_uuid) return validParentUuids.has(change.combo_parent_uuid);
-                        return matchesCategories(change);
+                        // Check if the user enabled "Explode Combos" in Odoo POS settings
+                        const explodeCombos = this.config.ridhira_explode_combos_in_kitchen;
+                        
+                        if (explodeCombos) {
+                            // When exploded, every single item is routed strictly by its OWN product category.
+                            return matchesCategories(change);
+                        } else {
+                            // Standard behavior: child combo items follow their parent's routing.
+                            if (change.isCombo) return matchesCategories(change);
+                            if (change.combo_parent_uuid) return validParentUuids.has(change.combo_parent_uuid);
+                            return matchesCategories(change);
+                        }
                     };
+
 
                     allNew = allNew.filter(safeFilter);
                     allCancelled = allCancelled.filter(safeFilter);
