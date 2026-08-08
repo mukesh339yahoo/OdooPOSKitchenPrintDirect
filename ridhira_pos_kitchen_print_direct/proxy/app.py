@@ -739,6 +739,44 @@ def execute_cashbox_kick(printer_name, rpc_id):
         }), 200
 
 
+import uuid
+import subprocess
+
+def get_machine_id():
+    """Generates a permanent, physical machine ID based on the OS."""
+    try:
+        os_name = platform.system()
+        if os_name == "Windows":
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:
+                return winreg.QueryValueEx(key, "MachineGuid")[0]
+                
+        elif os_name == "Linux":
+            with open("/etc/machine-id", "r") as f:
+                return f.read().strip()
+                
+        elif os_name == "Darwin": # macOS
+            output = subprocess.check_output(['ioreg', '-rd1', '-c', 'IOPlatformExpertDevice']).decode('utf-8')
+            for line in output.split('\n'):
+                if 'IOPlatformUUID' in line:
+                    return line.split('=')[1].strip().strip('"')
+    except Exception as e:
+        print(f"[DEBUG] Error reading OS Machine ID: {e}")
+        
+    # Extreme Fallback: Generate a random UUID and save it to a local hidden file
+    try:
+        fallback_file = os.path.join(BASE_DIR, '.device_id_fallback')
+        if os.path.exists(fallback_file):
+            with open(fallback_file, 'r') as f:
+                return f.read().strip()
+        new_uuid = uuid.uuid4().hex
+        with open(fallback_file, 'w') as f:
+            f.write(new_uuid)
+        return new_uuid
+    except:
+        return "UNKNOWN-DEVICE-ID"
+
+
 # --- License Verification ---
 def verify_license(api_key):
     print(f"[DEBUG] verify_license called with api_key: {api_key}")
@@ -780,7 +818,8 @@ def verify_license(api_key):
         
         # 2. Make Internet Request (Token missing or expired)
         print("[DEBUG] Checking SaaS License Server...")
-        response = requests.post(LICENSE_SERVER_URL, json={"api_key": api_key}, timeout=5)
+        machine_id = get_machine_id()
+        response = requests.post(LICENSE_SERVER_URL, json={"api_key": api_key, "device_id": machine_id}, timeout=5)
         print(f"[DEBUG] Cloudflare responded with HTTP {response.status_code}: {response.text}")
         
         if response.status_code == 200:
