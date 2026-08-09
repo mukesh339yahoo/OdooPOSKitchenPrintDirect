@@ -188,51 +188,46 @@ patch(PosStore.prototype, {
                             // Odoo 19 property fallback for Table ID and Order Name
                             let tableNameStr = "";
                             
-                            // 1. Try Odoo 19 native getTable()
-                            if (typeof order.getTable === 'function') {
+                            // 1. GUARANTEED PARITY: Use Odoo's native print payload builder!
+                            // This is the exact same function the Kitchen Printer uses to get its data.
+                            if (typeof order.export_for_printing === 'function') {
+                                try {
+                                    const printData = order.export_for_printing();
+                                    if (printData) {
+                                        if (printData.table_name) {
+                                            tableNameStr = printData.table_name;
+                                            if (printData.floor_name) tableNameStr = `${printData.floor_name} - ${tableNameStr}`;
+                                        } else if (printData.tableName) {
+                                            tableNameStr = printData.tableName;
+                                        } else if (printData.table_stand_number) {
+                                            tableNameStr = `Stand ${printData.table_stand_number}`;
+                                        }
+                                    }
+                                } catch(e) {
+                                    console.warn("[Ridhira POS] Error in export_for_printing:", e);
+                                }
+                            }
+                            
+                            // 2. Try Odoo native getTable()
+                            if (!tableNameStr && typeof order.getTable === 'function') {
                                 const tableObj = order.getTable();
                                 if (tableObj) {
                                     if (tableObj.floor_id && tableObj.floor_id.name) tableNameStr = `${tableObj.floor_id.name} - `;
                                     else if (tableObj.floor && tableObj.floor.name) tableNameStr = `${tableObj.floor.name} - `;
                                     
                                     if (typeof tableObj.getName === 'function') tableNameStr += tableObj.getName();
-                                    else tableNameStr += tableObj.name || tableObj.id;
+                                    else tableNameStr += tableObj.name || tableObj.table_number || tableObj.id;
                                 }
                             }
                             
-                            // 2. Fallback for primitive ID parsing
+                            // 3. Last Resort Fallback
                             if (!tableNameStr) {
                                 const tObj = order.table || order.table_id || order.self_ordering_table_id || order.tableId;
                                 if (tObj) {
                                     if (typeof tObj === 'object') {
-                                        tableNameStr = tObj.name || tObj.table_name || tObj[1] || (tObj.id ? String(tObj.id) : "");
+                                        tableNameStr = tObj.name || tObj.table_name || tObj.table_number || tObj[1] || (tObj.id ? String(tObj.id) : "");
                                     } else {
-                                        let foundTable = null;
-                                        try {
-                                            // Aggressive scan of Odoo 17/18/19 locations
-                                            const tableModels = [
-                                                this.models && this.models['restaurant.table'],
-                                                window.posmodel && window.posmodel.models && window.posmodel.models['restaurant.table'],
-                                                window.posmodel && window.posmodel.tables,
-                                                this.tables
-                                            ];
-                                            
-                                            for (const tm of tableModels) {
-                                                if (tm && !foundTable) {
-                                                    if (Array.isArray(tm)) foundTable = tm.find(t => t.id == tObj);
-                                                    else if (typeof tm.get === 'function') foundTable = tm.get(tObj);
-                                                    else if (typeof tm.getAll === 'function') foundTable = tm.getAll().find(t => t.id == tObj);
-                                                }
-                                            }
-                                        } catch(e) {}
-                                        
-                                        if (foundTable && foundTable.name) {
-                                            tableNameStr = foundTable.name;
-                                        } else {
-                                            const tMap = window.posmodel && window.posmodel.tables_by_id;
-                                            if (tMap && tMap[tObj]) tableNameStr = tMap[tObj].name;
-                                            else tableNameStr = String(tObj);
-                                        }
+                                        tableNameStr = String(tObj);
                                     }
                                 }
                             }
