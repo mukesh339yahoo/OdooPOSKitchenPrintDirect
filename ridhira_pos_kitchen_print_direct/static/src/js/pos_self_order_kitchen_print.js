@@ -196,6 +196,9 @@ patch(PosStore.prototype, {
                                     if (printData) {
                                         if (printData.table_name) {
                                             tableNameStr = printData.table_name;
+                                            if (!tableNameStr.toLowerCase().includes('table') && !tableNameStr.toLowerCase().includes('stand')) {
+                                                tableNameStr = `Table ${tableNameStr}`;
+                                            }
                                             if (printData.floor_name) tableNameStr = `${printData.floor_name} - ${tableNameStr}`;
                                         } else if (printData.tableName) {
                                             tableNameStr = printData.tableName;
