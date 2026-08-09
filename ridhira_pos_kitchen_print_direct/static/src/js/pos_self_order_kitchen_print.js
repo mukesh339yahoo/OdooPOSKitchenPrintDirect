@@ -196,9 +196,6 @@ patch(PosStore.prototype, {
                                     if (printData) {
                                         if (printData.table_name) {
                                             tableNameStr = printData.table_name;
-                                            if (!tableNameStr.toLowerCase().includes('table') && !tableNameStr.toLowerCase().includes('stand')) {
-                                                tableNameStr = `Table ${tableNameStr}`;
-                                            }
                                             if (printData.floor_name) tableNameStr = `${printData.floor_name} - ${tableNameStr}`;
                                         } else if (printData.tableName) {
                                             tableNameStr = printData.tableName;
@@ -235,6 +232,11 @@ patch(PosStore.prototype, {
                                 }
                             }
                             if (tableNameStr === "[object Object]") tableNameStr = "Unknown Table";
+                            
+                            // Apply "Table " prefix globally to any raw number or name that lacks context
+                            if (tableNameStr && !tableNameStr.toLowerCase().includes('table') && !tableNameStr.toLowerCase().includes('stand') && !tableNameStr.toLowerCase().includes('tracker') && !tableNameStr.toLowerCase().includes('takeaway') && tableNameStr !== 'Unknown Table') {
+                                tableNameStr = `Table ${tableNameStr}`;
+                            }
                             
                             // Extract Modifiers and Price from matched OrderLine or Change
                             let priceStr = "";
