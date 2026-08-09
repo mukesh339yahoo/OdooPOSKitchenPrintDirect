@@ -209,16 +209,19 @@ patch(PosStore.prototype, {
                                     } else {
                                         let foundTable = null;
                                         try {
-                                            // Try to lookup the table by ID in Odoo 19 POS models
-                                            if (this.models && this.models['restaurant.table']) {
-                                                const tableModel = this.models['restaurant.table'];
-                                                if (Array.isArray(tableModel)) {
-                                                    foundTable = tableModel.find(t => t.id == tObj);
-                                                } else if (typeof tableModel.get === 'function') {
-                                                    foundTable = tableModel.get(tObj);
-                                                } else if (typeof tableModel.getAll === 'function') {
-                                                    const tables = tableModel.getAll();
-                                                    foundTable = tables.find(t => t.id == tObj);
+                                            // Aggressive scan of Odoo 17/18/19 locations
+                                            const tableModels = [
+                                                this.models && this.models['restaurant.table'],
+                                                window.posmodel && window.posmodel.models && window.posmodel.models['restaurant.table'],
+                                                window.posmodel && window.posmodel.tables,
+                                                this.tables
+                                            ];
+                                            
+                                            for (const tm of tableModels) {
+                                                if (tm && !foundTable) {
+                                                    if (Array.isArray(tm)) foundTable = tm.find(t => t.id == tObj);
+                                                    else if (typeof tm.get === 'function') foundTable = tm.get(tObj);
+                                                    else if (typeof tm.getAll === 'function') foundTable = tm.getAll().find(t => t.id == tObj);
                                                 }
                                             }
                                         } catch(e) {}
