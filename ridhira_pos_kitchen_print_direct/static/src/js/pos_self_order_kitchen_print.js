@@ -188,8 +188,13 @@ patch(PosStore.prototype, {
                             // Odoo 19 property fallback for Table ID and Order Name
                             let tableNameStr = "";
                             
-                            // 1. Try Odoo 19 native getTable()
-                            if (typeof order.getTable === 'function') {
+                            // 1. Check for Self-Ordering Table Stand / Tracker Numbers first!
+                            if (order.table_stand_number) tableNameStr = `Stand ${order.table_stand_number}`;
+                            else if (order.tracker_number) tableNameStr = `Tracker ${order.tracker_number}`;
+                            else if (order.tracking_number) tableNameStr = `Tracker ${order.tracking_number}`;
+                            
+                            // 2. Try Odoo 19 native getTable()
+                            if (!tableNameStr && typeof order.getTable === 'function') {
                                 const tableObj = order.getTable();
                                 if (tableObj) {
                                     if (tableObj.floor_id && tableObj.floor_id.name) tableNameStr = `${tableObj.floor_id.name} - `;
