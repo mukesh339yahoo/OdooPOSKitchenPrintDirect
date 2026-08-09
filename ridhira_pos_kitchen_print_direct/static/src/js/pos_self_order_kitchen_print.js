@@ -212,8 +212,11 @@ patch(PosStore.prototype, {
                                             // Try to lookup the table by ID in Odoo 19 POS models
                                             if (this.models && this.models['restaurant.table']) {
                                                 const tableModel = this.models['restaurant.table'];
-                                                if (typeof tableModel.get === 'function') foundTable = tableModel.get(tObj);
-                                                else if (typeof tableModel.getAll === 'function') {
+                                                if (Array.isArray(tableModel)) {
+                                                    foundTable = tableModel.find(t => t.id == tObj);
+                                                } else if (typeof tableModel.get === 'function') {
+                                                    foundTable = tableModel.get(tObj);
+                                                } else if (typeof tableModel.getAll === 'function') {
                                                     const tables = tableModel.getAll();
                                                     foundTable = tables.find(t => t.id == tObj);
                                                 }
