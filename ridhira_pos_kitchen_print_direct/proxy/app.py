@@ -867,6 +867,34 @@ def handle_open_cashbox():
         }), 200
 
 
+import hashlib
+
+# --- Deduplication Cache ---
+recent_prints_cache = {}
+cache_lock = threading.Lock()
+
+def is_duplicate_print(receipt_data):
+    """
+    Returns True if the exact same receipt_data was processed within the last 10 seconds.
+    This safely drops duplicate retries from Odoo POS caused by network/license timeouts.
+    """
+    current_time = time.time()
+    # Create MD5 hash of the payload
+    payload_hash = hashlib.md5(receipt_data.encode('utf-8')).hexdigest()
+    
+    with cache_lock:
+        # Cleanup old entries (older than 10 seconds)
+        keys_to_delete = [k for k, v in recent_prints_cache.items() if current_time - v > 10]
+        for k in keys_to_delete:
+            del recent_prints_cache[k]
+            
+        if payload_hash in recent_prints_cache:
+            return True
+        else:
+            recent_prints_cache[payload_hash] = current_time
+            return False
+
+
 @app.route('/hw_proxy/default_printer_action', methods=['POST'])
 def handle_default_printer_action():
     try:
@@ -910,6 +938,11 @@ def handle_default_printer_action():
                 "jsonrpc": "2.0", "id": rpc_id, 
                 "error": {"code": 200, "message": "Odoo Server Error", "data": {"name": "ProxyError", "message": "Receipt data not found."}}
             }), 200
+            
+        # Check for duplicate retries
+        if is_duplicate_print(receipt_data):
+            print(f"[DEBUG] Deduplication triggered: Ignoring duplicate print request from Odoo POS retry.")
+            return jsonify({"jsonrpc": "2.0", "id": rpc_id, "result": True}), 200
             
         try:
             image_bytes = base64.b64decode(receipt_data)
