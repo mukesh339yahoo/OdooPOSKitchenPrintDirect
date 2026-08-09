@@ -234,7 +234,8 @@ patch(PosStore.prototype, {
                             if (tableNameStr === "[object Object]") tableNameStr = "Unknown Table";
                             
                             // Apply "Table " prefix globally to any raw number or name that lacks context
-                            if (tableNameStr && !tableNameStr.toLowerCase().includes('table') && !tableNameStr.toLowerCase().includes('stand') && !tableNameStr.toLowerCase().includes('tracker') && !tableNameStr.toLowerCase().includes('takeaway') && tableNameStr !== 'Unknown Table') {
+                            tableNameStr = String(tableNameStr || "");
+                            if (tableNameStr && !tableNameStr.toLowerCase().includes('table') && !tableNameStr.toLowerCase().includes('stand') && !tableNameStr.toLowerCase().includes('tracker') && !tableNameStr.toLowerCase().includes('takeaway') && tableNameStr !== 'Unknown Table' && tableNameStr !== 'undefined') {
                                 tableNameStr = `Table ${tableNameStr}`;
                             }
                             
