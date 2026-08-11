@@ -36,7 +36,7 @@ patch(PosStore.prototype, {
 
         for (const order of this.models["pos.order"].filter(
             (o) =>
-                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
+                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker")) &&
                 typeof o.id === "number"
         )) {
             preparationBefore.set(order.id, JSON.stringify(order.last_order_preparation_change));
@@ -70,9 +70,8 @@ patch(PosStore.prototype, {
             const domain = [
                 ["config_id", "=", this.config.id],
                 ["state", "in", ["draft", "cancel"]],
-                "|", "|",
+                "|",
                 ["source", "in", ["kiosk", "mobile"]],
-                ["tracking_number", "!=", false],
                 ["floating_order_name", "ilike", "Self-Order"]
             ];
             if (sessionStartDate) {
@@ -87,7 +86,7 @@ patch(PosStore.prototype, {
 
         for (const order of this.models["pos.order"].filter(
             (o) =>
-                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker") || o.tracking_number) &&
+                (['kiosk', 'mobile'].includes(o.source) || (o.floating_order_name || "").startsWith("Self-Order") || (o.floating_order_name || "").startsWith("Table tracker")) &&
                 typeof o.id === "number"
         )) {
             // 3. Prevent Table Wiping Bug
