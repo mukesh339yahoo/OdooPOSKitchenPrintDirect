@@ -601,8 +601,8 @@ def generate_tspl_commands(cup_data):
     cmds.append("CLS")
     
     y = 20
-    font = "3"
-    font_small = "2"
+    font = "2"
+    font_small = "1"
     
     # 1. Header
     cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{is_takeout}"')

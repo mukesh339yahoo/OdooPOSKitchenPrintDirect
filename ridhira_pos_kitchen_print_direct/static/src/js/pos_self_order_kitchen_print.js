@@ -293,9 +293,9 @@ patch(PosStore.prototype, {
                                 modifiers.push(change.name_wrap.slice(1).join(" "));
                             }
                             
-                            if (change.customer_note) {
+                            if (change.customer_note && String(change.customer_note).trim() !== "[]" && String(change.customer_note).trim() !== "") {
                                 modifiers.push(`Note: ${change.customer_note}`);
-                            } else if (change.note) {
+                            } else if (change.note && String(change.note).trim() !== "[]" && String(change.note).trim() !== "") {
                                 modifiers.push(`Note: ${change.note}`);
                             }
                             
