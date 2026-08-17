@@ -15,5 +15,12 @@
         "type": "escpos",
         "ip": "192.168.100.101",
         "port": 9100
+    },
+    "Boba_Printer_USB": {
+        "kitchen": true,
+        "type": "tspl",
+        "system_name": "Xprinter XP-T202UA",
+        "ip": "127.0.0.1",
+        "port": 9100
     }
 }

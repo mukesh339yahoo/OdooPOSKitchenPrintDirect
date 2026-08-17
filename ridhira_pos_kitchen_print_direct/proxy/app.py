@@ -236,6 +236,8 @@ class PrintQueueManager:
                         success, message = print_to_escpos(image_bytes, target_printer.get("ip"), target_printer.get("port"))
                     else:
                         success, message = False, f"Image file not found: {file_path}"
+                elif print_type == 'tspl':
+                    success, message = print_to_tspl(file_path, target_printer)
                 elif print_type == 'qz':
                     success, message = print_to_qz_tray(file_path)
                 else:
@@ -319,6 +321,55 @@ def print_to_escpos(image_bytes, ip, port):
         return False, f"ESC/POS connection error: {e}"
     except Exception as e:
         return False, f"ESC/POS printing failed: {e}"
+
+
+def print_to_tspl(file_path, target_printer):
+    """Prints a dynamic label using raw TSPL commands."""
+    try:
+        if not os.path.exists(file_path):
+            return False, f"JSON file not found: {file_path}"
+            
+        if not file_path.endswith('.json'):
+            return False, "TSPL printers only support dynamic label printing, not raster receipt images."
+            
+        with open(file_path, 'r', encoding='utf-8') as f:
+            cup_data = json.load(f)
+            
+        tspl_data = generate_tspl_commands(cup_data)
+        tspl_bytes = tspl_data.encode('utf-8')
+        
+        ip = target_printer.get("ip")
+        
+        if ip and ip != "127.0.0.1":
+            port = target_printer.get("port", 9100)
+            print(f"🖨️ Sending TSPL to network printer {ip}:{port}")
+            with socket.create_connection((ip, port), timeout=5) as s:
+                s.sendall(tspl_bytes)
+            return True, f"Print job sent successfully to TSPL at {ip}:{port}."
+        else:
+            system_name = target_printer.get("system_name")
+            print(f"🖨️ Sending TSPL to USB printer {system_name} via OS spooler")
+            if IS_WINDOWS:
+                import win32print
+                hprinter = win32print.OpenPrinter(system_name)
+                try:
+                    win32print.StartDocPrinter(hprinter, 1, ("TSPL Print Job", None, "RAW"))
+                    win32print.StartPagePrinter(hprinter)
+                    win32print.WritePrinter(hprinter, tspl_bytes)
+                    win32print.EndPagePrinter(hprinter)
+                    win32print.EndDocPrinter(hprinter)
+                finally:
+                    win32print.ClosePrinter(hprinter)
+                return True, "TSPL print job sent successfully to Windows USB spooler."
+            else:
+                print_command = ['lp', '-d', system_name, '-o', 'raw']
+                run(print_command, input=tspl_bytes, check=True)
+                return True, "TSPL print job sent successfully to macOS/Linux USB spooler."
+                
+    except socket.error as e:
+        return False, f"TSPL network connection error: {e}"
+    except Exception as e:
+        return False, f"TSPL printing failed: {e}"
 
 
 def print_to_qz_tray(receipt_data):
@@ -517,6 +568,92 @@ def generate_test_image_bytes(printer_name):
     except Exception as e:
         print(f"Error generating test image: {e}")
         return None
+
+def generate_tspl_commands(cup_data):
+    """
+    Generates TSPL commands for Boba/Sticker printing based on dynamic label size.
+    Converts pixel dimensions to millimeters assuming 203 DPI (8 dots/mm).
+    """
+    img_width_px = int(cup_data.get('label_width', 400))
+    img_height_px = int(cup_data.get('label_height', 300))
+    
+    width_mm = img_width_px / 8.0
+    height_mm = img_height_px / 8.0
+    
+    order_name = cup_data.get('order_name', '')
+    seq = cup_data.get('sequence', '')
+    is_takeout = cup_data.get('is_takeout', 'Takeout')
+    table_no = cup_data.get('table_no', '')
+    order_time = cup_data.get('order_time', '')
+    change = cup_data.get('change', {})
+    drink_name = change.get('name', 'Unknown Drink')
+    is_cancelled = cup_data.get('is_cancelled', False)
+    modifiers = cup_data.get('modifiers', '')
+    price = cup_data.get('price', '')
+    
+    if '(' in drink_name:
+        drink_name = drink_name.split('(')[0].strip()
+        
+    cmds = []
+    cmds.append(f"SIZE {width_mm:.1f} mm,{height_mm:.1f} mm")
+    cmds.append("GAP 2 mm,0")
+    cmds.append("DIRECTION 1")
+    cmds.append("CLS")
+    
+    y = 20
+    font = "3"
+    font_small = "2"
+    
+    # 1. Header
+    cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{is_takeout}"')
+    order_header = f"{order_name} [{seq}]"
+    cmds.append(f'TEXT {img_width_px - 200},{y},"{font}",0,1,1,"{order_header}"')
+    y += 40
+    
+    if is_takeout != "Takeout" and table_no:
+        cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{table_no}"')
+    cmds.append(f'TEXT {img_width_px - 200},{y},"{font}",0,1,1,"{order_time}"')
+    y += 40
+    
+    # 2. Drink Name
+    words = drink_name.split()
+    current_line = ""
+    for w in words:
+        if len(current_line + w) > 20 and current_line:
+            cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{current_line.strip()}"')
+            y += 40
+            current_line = w + " "
+        else:
+            current_line += w + " "
+    if current_line:
+        cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{current_line.strip()}"')
+        y += 40
+        
+    # 3. Modifiers
+    if modifiers:
+        mod_words = modifiers.replace(" | ", ", ").split()
+        mod_curr = ""
+        for w in mod_words:
+            if len(mod_curr + w) > 30 and mod_curr:
+                cmds.append(f'TEXT 40,{y},"{font_small}",0,1,1,"{mod_curr.strip()}"')
+                y += 30
+                mod_curr = w + " "
+            else:
+                mod_curr += w + " "
+        if mod_curr:
+            cmds.append(f'TEXT 40,{y},"{font_small}",0,1,1,"{mod_curr.strip()}"')
+            y += 30
+            
+    # 4. Price
+    if price:
+        cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{price}"')
+        
+    if is_cancelled:
+        y += 40
+        cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"*** CANCELLED ***"')
+        
+    cmds.append("PRINT 1,1")
+    return "\r\n".join(cmds) + "\r\n"
 
 def render_boba_label(cup_data):
     """
@@ -953,15 +1090,27 @@ def handle_default_printer_action():
                 json_str = image_bytes.split(b":", 1)[1].decode('utf-8')
                 print(f"[DEBUG] Boba Label JSON payload received: {json_str}")
                 cup_data = json.loads(json_str)
-                img = render_boba_label(cup_data)
-                print(f"[DEBUG] Successfully rendered Boba label image canvas for {cup_data.get('order_name', 'Unknown')}.")
+                
+                target_printer_type = printers_config.get(printer_name, {}).get("type", "system")
+                timestamp_ms = int(time.time() * 1000)
+                job_id = f"receipt_{rpc_id}_{printer_name}_{timestamp_ms}"
+                
+                if target_printer_type == 'tspl':
+                    print(f"[DEBUG] Printer type is TSPL, saving JSON directly...")
+                    file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.json')
+                    with open(file_name, 'w', encoding='utf-8') as f:
+                        json.dump(cup_data, f)
+                else:
+                    img = render_boba_label(cup_data)
+                    print(f"[DEBUG] Successfully rendered Boba label image canvas for {cup_data.get('order_name', 'Unknown')}.")
+                    file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')
+                    img.save(file_name)
             else:
                 img = Image.open(BytesIO(image_bytes))
-                
-            timestamp_ms = int(time.time() * 1000)
-            job_id = f"receipt_{rpc_id}_{printer_name}_{timestamp_ms}"
-            file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')
-            img.save(file_name)
+                timestamp_ms = int(time.time() * 1000)
+                job_id = f"receipt_{rpc_id}_{printer_name}_{timestamp_ms}"
+                file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')
+                img.save(file_name)
         except Exception as e:
             return jsonify({
                 "jsonrpc": "2.0", "id": rpc_id, 
