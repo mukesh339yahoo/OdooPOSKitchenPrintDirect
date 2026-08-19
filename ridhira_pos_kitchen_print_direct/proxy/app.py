@@ -36,13 +36,22 @@ from waitress import serve
 # import websocket 
 # import ssl 
 
-app = Flask(__name__)
+import sys
+
+# --- PyInstaller Path Resolution ---
+if getattr(sys, 'frozen', False):
+    BUNDLE_DIR = sys._MEIPASS
+    APPLICATION_PATH = os.path.dirname(sys.executable)
+else:
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    APPLICATION_PATH = BUNDLE_DIR
+
+app = Flask(__name__, template_folder=os.path.join(BUNDLE_DIR, 'templates'))
 
 # --- Configuration ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-IMAGE_SAVE_PATH = os.path.join(BASE_DIR, 'print_images')
-DB_PATH = os.path.join(BASE_DIR, 'jobs.db')
-PRINTERS_FILE = os.path.join(BASE_DIR, "printers.json")
+IMAGE_SAVE_PATH = os.path.join(APPLICATION_PATH, 'print_images')
+DB_PATH = os.path.join(APPLICATION_PATH, 'jobs.db')
+PRINTERS_FILE = os.path.join(APPLICATION_PATH, "printers.json")
 LICENSE_SERVER_URL = "https://ridhira-license-server.mukeshsharma339.workers.dev"
 JWT_SECRET = "ridhira_kitchen_print_proxy_secret_key_2026" # IMPORTANT: Must match Cloudflare Worker secret
 
@@ -667,7 +676,7 @@ def render_boba_label(cup_data):
     d = ImageDraw.Draw(img)
     
     try:
-        font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
+        font_dir = os.path.join(BUNDLE_DIR, 'fonts')
         
         # Load fonts at various sizes
         font_large = ImageFont.truetype(os.path.join(font_dir, 'Roboto-Bold.ttf'), 36)
@@ -902,7 +911,7 @@ def get_machine_id():
         
     # Extreme Fallback: Generate a random UUID and save it to a local hidden file
     try:
-        fallback_file = os.path.join(BASE_DIR, '.device_id_fallback')
+        fallback_file = os.path.join(APPLICATION_PATH, '.device_id_fallback')
         if os.path.exists(fallback_file):
             with open(fallback_file, 'r') as f:
                 return f.read().strip()
@@ -1142,5 +1151,5 @@ queue_manager = PrintQueueManager()
 
 if __name__ == '__main__':
     # Run the Flask app with Waitress WSGI server
-    print("🚀 Starting proxy with Waitress on port 9100...")
+    print("Starting proxy with Waitress on port 9100...")
     serve(app, host='0.0.0.0', port=9100)
