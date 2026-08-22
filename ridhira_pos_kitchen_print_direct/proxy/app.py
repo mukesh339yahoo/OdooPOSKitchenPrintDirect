@@ -599,6 +599,8 @@ def generate_tspl_commands(cup_data):
     is_cancelled = cup_data.get('is_cancelled', False)
     modifiers = cup_data.get('modifiers', '')
     price = cup_data.get('price', '')
+    if isinstance(price, str):
+        price = price.replace('\xa0', ' ').replace('\u00A0', ' ')
     
     if '(' in drink_name:
         drink_name = drink_name.split('(')[0].strip()
@@ -621,7 +623,16 @@ def generate_tspl_commands(cup_data):
     
     if is_takeout != "Takeout" and table_no:
         cmds.append(f'TEXT 20,{y},"{font}",0,1,1,"{table_no}"')
-    cmds.append(f'TEXT {img_width_px - 200},{y},"{font}",0,1,1,"{order_time}"')
+        
+    # Estimate width to prevent overlap in TSPL
+    table_w_approx = 20 + len(str(table_no)) * 16 if (is_takeout != "Takeout" and table_no) else 0
+    time_w_approx = len(str(order_time)) * 16
+    time_x = max(img_width_px - time_w_approx - 20, img_width_px - 200)
+    
+    if table_w_approx + 10 > time_x:
+        y += 40
+        
+    cmds.append(f'TEXT {time_x},{y},"{font}",0,1,1,"{order_time}"')
     y += 40
     
     # 2. Drink Name
@@ -702,6 +713,8 @@ def render_boba_label(cup_data):
         
     modifiers = cup_data.get('modifiers', '')
     price = cup_data.get('price', '')
+    if isinstance(price, str):
+        price = price.replace('\xa0', ' ').replace('\u00A0', ' ')
     
     # Starting Y coordinate
     y = 10
@@ -719,12 +732,20 @@ def render_boba_label(cup_data):
     y += 35
     
     # 3. Table and Time of Order
+    table_w = 0
     if is_takeout != "Takeout" and table_no:
         d.text((10, y), f"{table_no}", font=font_regular_medium, fill=0)
+        table_bbox = d.textbbox((0, 0), str(table_no), font=font_regular_medium)
+        table_w = table_bbox[2] - table_bbox[0]
     
     time_bbox = d.textbbox((0, 0), order_time, font=font_regular_medium)
     time_w = time_bbox[2] - time_bbox[0]
-    d.text((img_width - time_w - 15, y), order_time, font=font_regular_medium, fill=0)
+    time_x = img_width - time_w - 15
+    
+    if (10 + table_w + 10) > time_x:
+        y += 35
+        
+    d.text((time_x, y), order_time, font=font_regular_medium, fill=0)
     
     y += 40
     d.line([(10, y), (img_width - 15, y)], fill=0, width=2)
