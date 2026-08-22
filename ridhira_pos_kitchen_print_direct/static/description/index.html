@@ -172,17 +172,19 @@
                 <p>The external Python proxy must run on a machine (POS device, Raspberry Pi, or PC) that has network
                     access to your printers.</p>
 
-                <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">1. Install Dependencies</h4>
-                <p>Run the following command to install the required high-performance server libraries:</p>
-                <div
-                    style="background-color: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 6px; font-family: monospace; overflow-x: auto; margin-bottom: 20px;">
-                    python3 -m pip install Flask Pillow Flask-CORS python-escpos waitress
+                <h4 style="font-size: 16px; font-weight: 600; margin-top: 20px;">1. Obtain the Proxy Application</h4>
+                <p>The print proxy is available as a standalone executable application for <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong>. There is no need to install Python or any dependencies manually.</p>
+                <div style="background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <strong style="color: #0369a1;"><i class="fa fa-info-circle"></i> Note:</strong> We will provide the proxy binary for your relevant Operating System along with your API Key via WhatsApp, Telegram chat, or Email.
                 </div>
 
-                <h4 style="font-size: 16px; font-weight: 600;">2. Start the Proxy Server</h4>
-                <div
-                    style="background-color: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 6px; font-family: monospace; overflow-x: auto; margin-bottom: 20px;">
-                    python3 proxy/app.py
+                <h4 style="font-size: 16px; font-weight: 600;">2. Run the Proxy Server</h4>
+                <div style="margin-bottom: 20px;">
+                    <ul style="padding-left: 20px;">
+                        <li style="margin-bottom: 10px;"><strong>Windows:</strong> Simply double-click the provided <code>app.exe</code> file. A command prompt window will open indicating the server is running. You can optionally create a shortcut in your Startup folder to run it automatically on boot.</li>
+                        <li style="margin-bottom: 10px;"><strong>Linux:</strong> Add execute permissions using <code>chmod +x app_linux</code> and run it via terminal <code>./app_linux</code>. We recommend setting it up as a systemd background service for production.</li>
+                        <li style="margin-bottom: 10px;"><strong>macOS:</strong> Open the terminal, grant execute permissions using <code>chmod +x app_mac</code>, and run it with <code>./app_mac</code>.</li>
+                    </ul>
                 </div>
 
                 <h4 style="font-size: 16px; font-weight: 600;">3. Verify Connection & Dashboard</h4>
