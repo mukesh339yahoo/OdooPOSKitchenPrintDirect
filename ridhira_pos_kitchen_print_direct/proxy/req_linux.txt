@@ -1,0 +1,9 @@
+Flask
+Flask-Cors
+Pillow
+python-escpos
+PyJWT
+requests
+python-dateutil
+pytz
+waitress
