@@ -520,7 +520,7 @@ def settings():
     </body>
     </html>
     """
-    return render_template_string(html, printers_json=printers_json_str, message=message)
+    return render_template_string(html, printers_json=printers_json_str, message=message, current_settings=current_settings)
 
 
 @app.route('/detect', methods=['GET'])
