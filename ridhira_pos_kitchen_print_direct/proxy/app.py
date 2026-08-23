@@ -52,6 +52,7 @@ app = Flask(__name__, template_folder=os.path.join(BUNDLE_DIR, 'templates'))
 IMAGE_SAVE_PATH = os.path.join(APPLICATION_PATH, 'print_images')
 DB_PATH = os.path.join(APPLICATION_PATH, 'jobs.db')
 PRINTERS_FILE = os.path.join(APPLICATION_PATH, "printers.json")
+SETTINGS_FILE = os.path.join(APPLICATION_PATH, "settings.json")
 LICENSE_SERVER_URL = "https://ridhira-license-server.mukeshsharma339.workers.dev"
 JWT_SECRET = "ridhira_kitchen_print_proxy_secret_key_2026" # IMPORTANT: Must match Cloudflare Worker secret
 
@@ -61,6 +62,10 @@ if not os.path.exists(IMAGE_SAVE_PATH):
 if not os.path.exists(PRINTERS_FILE):
     with open(PRINTERS_FILE, "w") as f:
         json.dump({}, f)
+
+if not os.path.exists(SETTINGS_FILE):
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump({"max_retries": 5, "retry_delay": 3}, f)
 
 # Enable CORS for all routes
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -76,6 +81,18 @@ def load_printers():
 def save_printers(data):
     """Saves the current printer configuration to printers.json."""
     with open(PRINTERS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def load_settings():
+    """Loads global settings from settings.json."""
+    if not os.path.exists(SETTINGS_FILE):
+        return {"max_retries": 5, "retry_delay": 3}
+    with open(SETTINGS_FILE) as f:
+        return json.load(f)
+
+def save_settings(data):
+    """Saves global settings to settings.json."""
+    with open(SETTINGS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 
@@ -258,10 +275,14 @@ class PrintQueueManager:
             if success:
                 self._update_job_status(job_id, 'completed', message)
             else:
+                settings = load_settings()
+                max_retries = int(settings.get('max_retries', 5))
+                retry_delay = int(settings.get('retry_delay', 3))
+                
                 retries = job['retries']
-                if retries < 5:
+                if retries < max_retries:
                     self._update_job_status(job_id, 'pending', message, increment_retry=True)
-                    time.sleep(3) # Simple backoff before retrying
+                    time.sleep(retry_delay) # Simple backoff before retrying
                     q.put(job_id) 
                 else:
                     self._update_job_status(job_id, 'failed', message, increment_retry=True)
@@ -427,7 +448,14 @@ def settings():
         try:
             new_printers = json.loads(request.form.get('printers_json', '{}'))
             save_printers(new_printers)
-            message = "Printers updated successfully!"
+            
+            new_settings = {
+                "max_retries": int(request.form.get('max_retries', 5)),
+                "retry_delay": int(request.form.get('retry_delay', 3))
+            }
+            save_settings(new_settings)
+            
+            message = "Settings and Printers updated successfully!"
         except Exception as e:
             message = f"Error saving JSON: {e}"
     else:
@@ -435,6 +463,7 @@ def settings():
 
     current_printers = load_printers()
     printers_json_str = json.dumps(current_printers, indent=4)
+    current_settings = load_settings()
     
     html = """
     <!DOCTYPE html>
@@ -445,27 +474,47 @@ def settings():
             body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 800px; margin: auto; }
             .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 15px; }
             h2 { color: #333; margin: 0; }
-            textarea { width: 100%; height: 400px; font-family: monospace; font-size: 14px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-            .btn { background-color: #28a745; color: white; padding: 12px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; font-weight: bold; }
+            .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+            textarea { width: 100%; height: 350px; font-family: monospace; font-size: 14px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+            .btn { background-color: #28a745; color: white; padding: 12px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; font-weight: bold; width: 100%; }
             .btn:hover { background-color: #218838; }
             .msg { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; border: 1px solid #c3e6cb; margin-bottom: 15px; }
             .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 15px; }
             .back-link { text-decoration: none; color: #28a745; font-weight: bold; padding: 8px 15px; border: 1px solid #28a745; border-radius: 4px; }
             .back-link:hover { background-color: #28a745; color: white; }
+            .form-group { margin-bottom: 15px; }
+            label { font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
+            input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         </style>
     </head>
     <body>
         <div class="header-container">
-            <h2>Printer Configuration</h2>
+            <h2>Proxy Configuration</h2>
             <a href="{{ url_for('index') }}" class="back-link">Home Dashboard</a>
         </div>
         {% if message %}
             <div class="{% if 'Error' in message %}error{% else %}msg{% endif %}">{{ message }}</div>
         {% endif %}
-        <p>Edit the JSON below to configure your printers. Be careful not to break the JSON format!</p>
+        
         <form method="POST">
-            <textarea name="printers_json">{{ printers_json }}</textarea>
-            <br>
+            <div class="card">
+                <h3>Global Settings</h3>
+                <div class="form-group">
+                    <label>Max Retries (Print Queue)</label>
+                    <input type="number" name="max_retries" value="{{ current_settings.get('max_retries', 5) }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Retry Delay (Seconds)</label>
+                    <input type="number" name="retry_delay" value="{{ current_settings.get('retry_delay', 3) }}" required>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Printer Configuration JSON</h3>
+                <p style="margin-top:0; color:#666; font-size: 14px;">Edit the JSON below to configure your printers. Be careful not to break the JSON format!</p>
+                <textarea name="printers_json">{{ printers_json }}</textarea>
+            </div>
+            
             <button class="btn" type="submit">Save Changes</button>
         </form>
     </body>
