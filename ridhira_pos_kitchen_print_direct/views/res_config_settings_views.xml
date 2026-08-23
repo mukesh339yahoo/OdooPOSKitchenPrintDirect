@@ -17,6 +17,18 @@
                 <setting string="Split Combos to Respective Printers" help="If enabled, Combo items (like Burger + Coke) will be split to their respective Kitchen/Bar printers instead of all printing to the same printer.">
                     <field name="pos_ridhira_explode_combos_in_kitchen"/>
                 </setting>
+                <setting string="Kitchen Order Number Style" help="Customize the font size (%) and bold weight for the Order Number printed on kitchen receipts.">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <label for="pos_kitchen_order_font_size" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_order_font_size"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_kitchen_order_is_bold" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_order_is_bold"/>
+                        </div>
+                    </div>
+                </setting>
             </xpath>
         </field>
     </record>

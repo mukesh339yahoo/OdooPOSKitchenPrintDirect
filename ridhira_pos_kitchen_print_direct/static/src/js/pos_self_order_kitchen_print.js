@@ -151,6 +151,19 @@ patch(PosStore.prototype, {
         }
     },
 
+    getOrderData(order, reprint) {
+        const result = super.getOrderData(order, reprint);
+        
+        // Pass the POS config fields into the ticket data payload
+        const customFontSize = this.config?.kitchen_order_font_size ?? this.config?.raw?.kitchen_order_font_size;
+        const customIsBold = this.config?.kitchen_order_is_bold ?? this.config?.raw?.kitchen_order_is_bold;
+        
+        result.kitchen_order_font_size = customFontSize || 'Normal';
+        result.kitchen_order_is_bold = customIsBold === true;
+        
+        return result;
+    },
+
     async printChanges(order, orderChange, reprint = false, printers = this.unwatched.printers) {
         console.log("Ridhira: printChanges executing!", { orderId: order.id, orderChange, reprint, printers: printers?.length });
         

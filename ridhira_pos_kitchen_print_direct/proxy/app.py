@@ -333,19 +333,50 @@ def print_to_escpos(image_bytes, ip, port):
 
 
 def print_to_tspl(file_path, target_printer):
-    """Prints a dynamic label using raw TSPL commands."""
+    """Prints a dynamic label using raw TSPL BITMAP commands from a raster image."""
     try:
         if not os.path.exists(file_path):
-            return False, f"JSON file not found: {file_path}"
+            return False, f"Image file not found: {file_path}"
             
-        if not file_path.endswith('.json'):
-            return False, "TSPL printers only support dynamic label printing, not raster receipt images."
+        if not file_path.endswith('.png'):
+            return False, "TSPL printers now expect a .png raster image."
             
-        with open(file_path, 'r', encoding='utf-8') as f:
-            cup_data = json.load(f)
-            
-        tspl_data = generate_tspl_commands(cup_data)
-        tspl_bytes = tspl_data.encode('utf-8')
+        # 1. Convert PNG to TSPL bitmap data
+        img = Image.open(file_path)
+        img_binary = img.convert('1')
+        width_px, height_px = img_binary.size
+        width_bytes = (width_px + 7) // 8
+        
+        bitmap_data = bytearray()
+        for y in range(height_px):
+            for x_byte in range(width_bytes):
+                byte_val = 0
+                for bit in range(8):
+                    x = x_byte * 8 + bit
+                    if x < width_px:
+                        # For TSPL: 1 is black (print), 0 is white (no print)
+                        # PIL '1' mode: 0 is black, 255 is white
+                        pixel = img_binary.getpixel((x, y))
+                        if pixel == 0:
+                            byte_val |= (1 << (7 - bit))
+                bitmap_data.append(byte_val)
+                
+        # 2. Generate TSPL Command Sequence
+        width_mm = width_px / 8.0
+        height_mm = height_px / 8.0
+        
+        cmds = bytearray()
+        cmds.extend(f"SIZE {width_mm:.1f} mm,{height_mm:.1f} mm\r\n".encode('utf-8'))
+        cmds.extend(b"GAP 2 mm,0\r\n")
+        cmds.extend(b"DIRECTION 1\r\n")
+        cmds.extend(b"CLS\r\n")
+        
+        # BITMAP X,Y,width_in_bytes,height_in_dots,mode,bitmap_data
+        cmds.extend(f"BITMAP 0,0,{width_bytes},{height_px},0,".encode('utf-8'))
+        cmds.extend(bytes(bitmap_data))
+        cmds.extend(b"\r\nPRINT 1,1\r\n")
+        
+        tspl_bytes = bytes(cmds)
         
         ip = target_printer.get("ip")
         
@@ -1125,16 +1156,11 @@ def handle_default_printer_action():
                 timestamp_ms = int(time.time() * 1000)
                 job_id = f"receipt_{rpc_id}_{printer_name}_{timestamp_ms}"
                 
-                if target_printer_type == 'tspl':
-                    print(f"[DEBUG] Printer type is TSPL, saving JSON directly...")
-                    file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.json')
-                    with open(file_name, 'w', encoding='utf-8') as f:
-                        json.dump(cup_data, f)
-                else:
-                    img = render_boba_label(cup_data)
-                    print(f"[DEBUG] Successfully rendered Boba label image canvas for {cup_data.get('order_name', 'Unknown')}.")
-                    file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')
-                    img.save(file_name)
+                # We now ALWAYS generate an image, even for TSPL printers
+                img = render_boba_label(cup_data)
+                print(f"[DEBUG] Successfully rendered Boba label image canvas for {cup_data.get('order_name', 'Unknown')}.")
+                file_name = os.path.join(IMAGE_SAVE_PATH, f'{job_id}.png')
+                img.save(file_name)
             else:
                 img = Image.open(BytesIO(image_bytes))
                 timestamp_ms = int(time.time() * 1000)

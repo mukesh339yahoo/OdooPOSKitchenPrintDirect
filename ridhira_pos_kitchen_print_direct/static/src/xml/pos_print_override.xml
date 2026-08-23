@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="ridhira_pos_kitchen_print_direct.OrderChangeReceipt" t-inherit="point_of_sale.OrderChangeReceipt" t-inherit-mode="extension">
+        <xpath expr="//span[span[hasclass('order-ref-prefix')]]" position="replace">
+            <!-- 1. Handle Bold wrapping -->
+            <t t-set="kitchen_font_size" t-value="data.kitchen_order_font_size || 'Normal'"/>
+            <t t-set="is_bold" t-value="data.kitchen_order_is_bold"/>
+            <t t-set="is_big" t-value="kitchen_font_size == 'Large'"/>
+            
+            <span t-attf-class="#{is_big ? 'pos-receipt-title' : ''}">
+                <t t-if="is_bold">
+                    <strong>
+                        <span class="order-ref-prefix">Order </span>
+                        <span t-if="data.tracking_number">
+                            # <t t-esc="data.tracking_number"/>
+                        </span>
+                    </strong>
+                </t>
+                <t t-else="">
+                    <span class="order-ref-prefix">Order </span>
+                    <span t-if="data.tracking_number">
+                        # <t t-esc="data.tracking_number"/>
+                    </span>
+                </t>
+            </span>
+        </xpath>
+    </t>
+</templates>

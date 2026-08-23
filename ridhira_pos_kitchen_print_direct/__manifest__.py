@@ -19,6 +19,7 @@
     ],
     'assets': {
         'point_of_sale._assets_pos': [
+            'ridhira_pos_kitchen_print_direct/static/src/xml/pos_print_override.xml',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_combo_patch.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
