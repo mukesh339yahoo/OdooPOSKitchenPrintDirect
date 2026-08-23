@@ -3,7 +3,7 @@ import subprocess
 
 def main():
     cmd = [
-        'pyinstaller', '--onefile', '--clean',
+        'pyinstaller', '--onedir', '--noupx', '--clean',
         '--add-data', 'templates;templates',
         '--add-data', 'fonts;fonts',
         '--add-data', 'escpos/capabilities/capabilities.json;escpos/capabilities',

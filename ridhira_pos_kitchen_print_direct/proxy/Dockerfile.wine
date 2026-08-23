@@ -1,0 +1,18 @@
+FROM tobix/pywine:3.9
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cabextract \
+    xvfb \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks -O /usr/local/bin/winetricks && \
+    chmod +x /usr/local/bin/winetricks
+
+ENV WINEDEBUG=-all
+
+# Download official Microsoft Visual C++ 2015-2022 Redistributable
+RUN wget -q https://aka.ms/vs/17/release/vc_redist.x64.exe -O /tmp/vc_redist.x64.exe && \
+    xvfb-run -a wine /tmp/vc_redist.x64.exe /install /quiet /norestart && \
+    rm /tmp/vc_redist.x64.exe
