@@ -198,7 +198,21 @@ patch(PosStore.prototype, {
                         const qty = Math.abs(change.qty || change.quantity || 1); // Extract absolute quantity
                         for (let i = 1; i <= qty; i++) {
                             // Odoo 19 property fallback for Table ID and Order Name
+                            console.log("Order Table:", order.table_id || order.table);
+                            console.log("Order Takeaway Flag:", order.takeaway, order.take_away, order.is_takeaway, order.isTakeaway);
+                            console.log("Order Service Type:", order.service_type, order.order_type);
+                            console.log("First Line Takeaway:", order.lines?.[0]?.takeaway, order.lines?.[0]?.service_type);
                             let tableNameStr = "";
+                            let isTakeaway = Boolean(
+                                order.take_away ||
+                                order.takeaway ||
+                                order.is_take_away ||
+                                order.isTakeaway ||
+                                order.raw?.take_away ||
+                                order.raw?.takeaway ||
+                                (order.selfOrder && order.selfOrder.take_away) ||
+                                (order.lines && typeof order.lines.some === 'function' && order.lines.some(l => l.take_away || l.takeaway))
+                            );
                             
                             // 1. GUARANTEED PARITY: Use Odoo's native print payload builder!
                             // This is the exact same function the Kitchen Printer uses to get its data.
@@ -206,6 +220,9 @@ patch(PosStore.prototype, {
                                 try {
                                     const printData = order.export_for_printing();
                                     if (printData) {
+                                        if (printData.takeaway !== undefined || printData.isTakeaway !== undefined) {
+                                            isTakeaway = printData.takeaway ?? printData.isTakeaway ?? isTakeaway;
+                                        }
                                         if (printData.table_name) {
                                             tableNameStr = printData.table_name;
                                             if (printData.floor_name) tableNameStr = `${printData.floor_name} - ${tableNameStr}`;
@@ -315,7 +332,22 @@ patch(PosStore.prototype, {
                             const modifiersStr = modifiers.join(" | ");
                             
                             const oName = (order.name && order.name !== '/') ? order.name : (order.tracking_number || order.trackingNumber || order.uid || "Order");
-                            const isTakeout = order.takeaway ? "Takeout" : (tableNameStr && tableNameStr !== "Takeout" && tableNameStr !== "Unknown Table" ? "Dine In" : "Takeout");
+                            
+                            let orderSource = "Takeout";
+                            if (order.delivery_provider) {
+                                orderSource = order.delivery_provider;
+                            } else if (order.source && !['cashier', 'pos'].includes(order.source.toLowerCase())) {
+                                orderSource = order.source.charAt(0).toUpperCase() + order.source.slice(1);
+                            } else if (order.floating_order_name && order.floating_order_name.trim() !== "") {
+                                if (!order.floating_order_name.startsWith("Self-Order") && !order.floating_order_name.startsWith("Table tracker")) {
+                                    orderSource = order.floating_order_name;
+                                }
+                            }
+                            
+                            if (isTakeaway) {
+                                tableNameStr = ""; // Hide table for takeaway labels
+                            }
+                            const isTakeout = isTakeaway ? orderSource : (tableNameStr && tableNameStr !== "Takeout" && tableNameStr !== "Unknown Table" ? "Dine In" : orderSource);
                             
                             const cupData = {
                                 order_name: oName,
