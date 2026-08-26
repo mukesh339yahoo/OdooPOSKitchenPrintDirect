@@ -6,6 +6,7 @@ def main():
         'pyinstaller', '--onefile', '--clean',
         '--name', 'app_linux',
         '--add-data', 'templates:templates',
+        '--add-data', 'static:static',
         '--add-data', 'fonts:fonts',
         '--add-data', 'escpos/capabilities/capabilities.json:escpos',
         '--exclude-module', 'win32print',

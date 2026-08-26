@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('templates', 'templates'), ('fonts', 'fonts'), ('escpos/capabilities/capabilities.json', 'escpos')],
+    datas=[('templates', 'templates'), ('static', 'static'), ('fonts', 'fonts'), ('escpos/capabilities/capabilities.json', 'escpos')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
