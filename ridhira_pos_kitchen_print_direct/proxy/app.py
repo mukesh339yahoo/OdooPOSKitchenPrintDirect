@@ -86,9 +86,12 @@ def save_printers(data):
 def load_settings():
     """Loads global settings from settings.json."""
     if not os.path.exists(SETTINGS_FILE):
-        return {"max_retries": 5, "retry_delay": 3}
+        return {"max_retries": 5, "retry_delay": 3, "auto_clear_minutes": 5}
     with open(SETTINGS_FILE) as f:
-        return json.load(f)
+        data = json.load(f)
+        if "auto_clear_minutes" not in data:
+            data["auto_clear_minutes"] = 5
+        return data
 
 def save_settings(data):
     """Saves global settings to settings.json."""
@@ -116,6 +119,14 @@ def init_db():
             api_key TEXT PRIMARY KEY,
             token TEXT,
             expires_at DATETIME
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS queue_display (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            queue_number TEXT,
+            status TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
@@ -180,6 +191,9 @@ class PrintQueueManager:
                     except Exception as e:
                         print(f"Error removing file {file_path}: {e}")
                 c.execute("DELETE FROM print_jobs WHERE id = ?", (job_id,))
+            
+            # Cleanup old KDS queue orders older than 24 hours to prevent DB bloat
+            c.execute("DELETE FROM queue_display WHERE timestamp <= datetime('now', '-24 hours')")
             
             conn.commit()
             conn.close()
@@ -451,7 +465,8 @@ def settings():
             
             new_settings = {
                 "max_retries": int(request.form.get('max_retries', 5)),
-                "retry_delay": int(request.form.get('retry_delay', 3))
+                "retry_delay": int(request.form.get('retry_delay', 3)),
+                "auto_clear_minutes": int(request.form.get('auto_clear_minutes', 5))
             }
             save_settings(new_settings)
             
@@ -506,6 +521,10 @@ def settings():
                 <div class="form-group">
                     <label>Retry Delay (Seconds)</label>
                     <input type="number" name="retry_delay" value="{{ current_settings.get('retry_delay', 3) }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Auto-Clear Ready Orders (Minutes)</label>
+                    <input type="number" name="auto_clear_minutes" value="{{ current_settings.get('auto_clear_minutes', 5) }}" required>
                 </div>
             </div>
 
@@ -631,6 +650,79 @@ def api_printers_status():
             'queue_length': queue_counts.get(name, 0)
         }
     return jsonify(status_data)
+
+
+# --- KDS (Queue Display System) Routes ---
+
+@app.route('/api/kds/add', methods=['POST'])
+def api_kds_add():
+    data = request.json
+    queue_number = data.get('queue_number')
+    action = data.get('action', 'add')
+    
+    if not queue_number:
+        return jsonify({"success": False, "message": "Missing queue_number"}), 400
+        
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    if action == 'cancel':
+        c.execute("DELETE FROM queue_display WHERE queue_number = ?", (queue_number,))
+    else:
+        # Insert or update to Preparing
+        c.execute("SELECT id FROM queue_display WHERE queue_number = ?", (queue_number,))
+        row = c.fetchone()
+        if row:
+            c.execute("UPDATE queue_display SET status = 'Preparing', timestamp = CURRENT_TIMESTAMP WHERE queue_number = ?", (queue_number,))
+        else:
+            c.execute("INSERT INTO queue_display (queue_number, status) VALUES (?, 'Preparing')", (queue_number,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/kds/update', methods=['POST'])
+def api_kds_update():
+    data = request.json
+    queue_number = data.get('queue_number')
+    status = data.get('status', 'Ready')
+    
+    if not queue_number:
+        return jsonify({"success": False, "message": "Missing queue_number"}), 400
+        
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE queue_display SET status = ?, timestamp = CURRENT_TIMESTAMP WHERE queue_number = ?", (status, queue_number))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/kds/state', methods=['GET'])
+def api_kds_state():
+    settings = load_settings()
+    auto_clear_minutes = int(settings.get('auto_clear_minutes', 5))
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    # Auto clear old Ready orders on read
+    if auto_clear_minutes > 0:
+        c.execute("DELETE FROM queue_display WHERE status = 'Ready' AND timestamp <= datetime('now', '-{} minutes')".format(auto_clear_minutes))
+        conn.commit()
+        
+    c.execute("SELECT queue_number, status, timestamp FROM queue_display ORDER BY timestamp DESC")
+    orders = [dict(row) for row in c.fetchall()]
+    conn.close()
+    
+    return jsonify(orders)
+
+@app.route('/staff')
+def staff_screen():
+    return render_template('staff.html')
+
+@app.route('/tv')
+def tv_screen():
+    settings = load_settings()
+    return render_template('tv.html', settings=settings)
 
 
 def generate_test_image_bytes(printer_name):

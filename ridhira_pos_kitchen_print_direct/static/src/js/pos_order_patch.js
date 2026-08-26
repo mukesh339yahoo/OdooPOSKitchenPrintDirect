@@ -50,7 +50,36 @@ patch(PosStore.prototype, {
 
     async sendOrderInPreparation(order, opts = {}) {
         await this.assignDailyQueueNumber(order);
-        return super.sendOrderInPreparation(...arguments);
+        const result = await super.sendOrderInPreparation(...arguments);
+        
+        try {
+            const queueNumber = order.daily_queue_number || order.tracking_number;
+            if (queueNumber) {
+                // Determine proxy IP from configured Epson printers (which are used to bridge to the proxy)
+                let proxyIp = "localhost";
+                const epsonPrinter = (this.unwatched?.printers || this.printers || []).find(p => 
+                    p.config?.printer_type === 'epson_epos' || p.printer_type === 'epson_epos' || p.config?.epson_printer_ip
+                );
+                
+                if (epsonPrinter) {
+                    proxyIp = epsonPrinter.config?.epson_printer_ip || epsonPrinter.epson_printer_ip || "localhost";
+                }
+
+                if (proxyIp) {
+                    const action = opts.cancelled ? 'cancel' : 'add';
+                    const formattedNum = String(queueNumber).padStart(3, '0');
+                    fetch(`http://${proxyIp}:9100/api/kds/add`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ queue_number: formattedNum, action: action })
+                    }).catch(e => console.log("[Ridhira Proxy KDS] Silent fetch failed:", e));
+                }
+            }
+        } catch (e) {
+            console.error("[Ridhira Proxy KDS] Error sending to proxy:", e);
+        }
+        
+        return result;
     }
 });
 
