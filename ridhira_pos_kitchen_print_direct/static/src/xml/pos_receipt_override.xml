@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <!-- Actionpad Override for Table Tent Button -->
+    <t t-name="ridhira_pos_kitchen_print_direct.ActionpadWidget" t-inherit="point_of_sale.ActionpadWidget" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('actionpad')]" position="inside">
+            <t t-if="env.services.pos.config.pos_enable_table_tent">
+                <button class="button pay validation" t-on-click="assignTableTent">
+                    <i class="fa fa-map-marker"/> Assign Table Tent
+                </button>
+            </t>
+        </xpath>
+    </t>
+
+    <!-- Receipt Override -->
+    <t t-name="ridhira_pos_kitchen_print_direct.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+        <xpath expr="//ReceiptHeader" position="after">
+            <t t-if="order.config.pos_queue_number_mode and order.config.pos_queue_number_mode !== 'disabled'">
+                <div class="pos-receipt-center-align" style="margin-top: 15px; margin-bottom: 15px;">
+                    <t t-if="order.config.pos_enable_table_tent and order.table_tent_number">
+                        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
+                            Seating : <t t-esc="order.table_tent_number"/>
+                        </div>
+                    </t>
+                    <div>------------------------</div>
+                    <div style="font-size: 1.2em;">Your order number is</div>
+                    <div style="font-size: 3em; font-weight: bold;">
+                        <t t-if="order.daily_queue_number">
+                            <t t-esc="(order.daily_queue_number + '').padStart(3, '0')"/>
+                        </t>
+                        <t t-else="">
+                            <t t-esc="order.tracking_number and (order.tracking_number + '').padStart(3, '0')"/>
+                        </t>
+                    </div>
+                    <div>------------------------</div>
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>

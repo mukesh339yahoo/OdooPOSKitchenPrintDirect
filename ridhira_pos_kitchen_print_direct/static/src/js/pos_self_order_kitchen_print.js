@@ -160,6 +160,9 @@ patch(PosStore.prototype, {
         
         result.kitchen_order_font_size = customFontSize || 'Normal';
         result.kitchen_order_is_bold = customIsBold === true;
+        result.config = this.config; // Fix: expose config for Queue Number toggle logic
+        result.daily_queue_number = order.daily_queue_number;
+        result.table_tent_number = order.table_tent_number;
         
         return result;
     },
@@ -331,7 +334,8 @@ patch(PosStore.prototype, {
                             
                             const modifiersStr = modifiers.join(" | ");
                             
-                            const oName = (order.name && order.name !== '/') ? order.name : (order.tracking_number || order.trackingNumber || order.uid || "Order");
+                            const qNum = order.daily_queue_number ? (order.daily_queue_number + '').padStart(3, '0') : (order.tracking_number ? (order.tracking_number + '').padStart(3, '0') : null);
+                            const oName = qNum ? `Order ${qNum}` : ((order.name && order.name !== '/') ? order.name : (order.uid || "Order"));
                             
                             let orderSource = "Takeout";
                             if (order.delivery_provider) {

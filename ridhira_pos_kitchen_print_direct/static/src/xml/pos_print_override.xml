@@ -8,19 +8,40 @@
             <t t-set="is_big" t-value="kitchen_font_size == 'Large'"/>
             
             <span t-attf-class="#{is_big ? 'pos-receipt-title' : ''}">
-                <t t-if="is_bold">
-                    <strong>
+                <t t-if="data.config and data.config.pos_queue_number_mode and data.config.pos_queue_number_mode !== 'disabled'">
+                    <!-- New Daily Queue Number Logic -->
+                    <t t-if="data.config.pos_enable_table_tent and data.table_tent_number">
+                        <div style="font-size: 0.8em; font-weight: bold; margin-bottom: 5px;">
+                            Seating : <t t-esc="data.table_tent_number"/>
+                        </div>
+                    </t>
+                    <div>
+                        <t t-if="is_bold"><strong>Queue: </strong></t>
+                        <t t-else="">Queue: </t>
+                        <t t-if="data.daily_queue_number">
+                            <t t-esc="(data.daily_queue_number + '').padStart(3, '0')"/>
+                        </t>
+                        <t t-else="">
+                            <t t-esc="data.tracking_number and (data.tracking_number + '').padStart(3, '0')"/>
+                        </t>
+                    </div>
+                </t>
+                <t t-else="">
+                    <!-- Fallback to Standard Odoo Tracking Number -->
+                    <t t-if="is_bold">
+                        <strong>
+                            <span class="order-ref-prefix">Order </span>
+                            <span t-if="data.tracking_number">
+                                # <t t-esc="data.tracking_number"/>
+                            </span>
+                        </strong>
+                    </t>
+                    <t t-else="">
                         <span class="order-ref-prefix">Order </span>
                         <span t-if="data.tracking_number">
                             # <t t-esc="data.tracking_number"/>
                         </span>
-                    </strong>
-                </t>
-                <t t-else="">
-                    <span class="order-ref-prefix">Order </span>
-                    <span t-if="data.tracking_number">
-                        # <t t-esc="data.tracking_number"/>
-                    </span>
+                    </t>
                 </t>
             </span>
         </xpath>

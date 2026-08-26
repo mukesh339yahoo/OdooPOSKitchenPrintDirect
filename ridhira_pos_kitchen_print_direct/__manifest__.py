@@ -16,6 +16,7 @@
     'data': [
         'views/res_config_settings_views.xml',
         'views/pos_printer_views.xml',
+        'data/ir_sequence_data.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [
@@ -23,6 +24,8 @@
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_combo_patch.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
+            'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_patch.js',
+            'ridhira_pos_kitchen_print_direct/static/src/xml/pos_receipt_override.xml',
         ],
         'web.assets_tests': [
             'ridhira_pos_kitchen_print_direct/static/tests/tours/kitchen_print_tour.js',

@@ -10,6 +10,23 @@ class PosOrder(models.Model):
         inverse="_inverse_take_away",
         store=False
     )
+    
+    daily_queue_number = fields.Char(string="Daily Queue Number", readonly=True, copy=False)
+    table_tent_number = fields.Char(string="Table Tent Number", readonly=True, copy=False)
+
+    @api.model
+    def _order_fields(self, ui_order):
+        fields = super(PosOrder, self)._order_fields(ui_order)
+        if 'daily_queue_number' in ui_order:
+            fields['daily_queue_number'] = ui_order.get('daily_queue_number')
+        if 'table_tent_number' in ui_order:
+            fields['table_tent_number'] = ui_order.get('table_tent_number')
+        return fields
+        
+    @api.model
+    def get_next_daily_queue_number(self):
+        """Called via RPC from POS frontend to get the next global queue number"""
+        return self.env['ir.sequence'].next_by_code('pos.daily.queue.number') or ''
 
     @api.depends('preset_id')
     def _compute_take_away(self):

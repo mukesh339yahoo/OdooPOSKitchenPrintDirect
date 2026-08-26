@@ -29,6 +29,12 @@
                         </div>
                     </div>
                 </setting>
+                <setting string="Queue Numbering Mode" help="Select the queue numbering behavior for this POS. Replaces long Order References with short Daily Queue Numbers on Receipts and KDS.">
+                    <field name="pos_queue_number_mode"/>
+                </setting>
+                <setting string="Table Tent (Seating Tracker)" help="Enable the 'Assign Table Tent' button to type in plastic tent numbers for dine-in orders. Prints 'Seating: X' on receipts and KDS.">
+                    <field name="pos_enable_table_tent"/>
+                </setting>
             </xpath>
         </field>
     </record>

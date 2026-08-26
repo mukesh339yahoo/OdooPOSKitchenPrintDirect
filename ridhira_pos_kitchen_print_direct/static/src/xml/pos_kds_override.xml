@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <!-- Enterprise KDS Order Card Override -->
+    <t t-name="ridhira_pos_kitchen_print_direct.PreparationOrder" t-inherit="pos_preparation_display.PreparationOrder" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('p-2') and hasclass('d-flex')]" position="before">
+            <t t-if="order.config and order.config.pos_queue_number_mode and order.config.pos_queue_number_mode !== 'disabled'">
+                <div class="kds-queue-header" style="background-color: #ffd166; padding: 10px; text-align: center; border-bottom: 2px solid #333;">
+                    <t t-if="order.config.pos_enable_table_tent and order.table_tent_number">
+                        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
+                            Seating: <t t-esc="order.table_tent_number"/>
+                        </div>
+                    </t>
+                    <div style="font-size: 2em; font-weight: bold;">
+                        Queue: 
+                        <t t-if="order.config.pos_queue_number_mode === 'global'">
+                            <t t-esc="order.daily_queue_number ? order.daily_queue_number.padStart(3, '0') : order.tracking_number"/>
+                        </t>
+                        <t t-else="">
+                            <t t-esc="order.tracking_number and String(order.tracking_number).padStart(3, '0')"/>
+                        </t>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>

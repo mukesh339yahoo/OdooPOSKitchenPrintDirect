@@ -11,6 +11,18 @@ class PosConfig(models.Model):
         ('Large', 'Large')
     ], string='Kitchen Order Font Size', default='Normal', help="Font size for the Order Number on kitchen prints.")
     
+    pos_queue_number_mode = fields.Selection([
+        ('disabled', 'Disabled (Default Odoo)'),
+        ('local', 'Single Terminal (Local)'),
+        ('global', 'Multi Terminal (Global)')
+    ], string="Queue Numbering Mode", default='disabled', help="Select the queue numbering behavior.")
+    
+    pos_enable_table_tent = fields.Boolean(
+        string="Table Tent Enabled", 
+        default=False, 
+        help="Enable the 'Assign Table Tent' seating tracker feature."
+    )
+    
     kitchen_order_is_bold = fields.Boolean(
         string='Kitchen Order Font Bold',
         default=False,
