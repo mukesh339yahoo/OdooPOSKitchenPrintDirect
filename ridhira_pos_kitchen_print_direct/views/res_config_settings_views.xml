@@ -29,6 +29,30 @@
                         </div>
                     </div>
                 </setting>
+                <setting string="Kitchen Item Style" help="Customize the font size and bold weight for the Food Items printed on kitchen receipts.">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <label for="pos_kitchen_item_font_size" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_item_font_size"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_kitchen_item_is_bold" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_item_is_bold"/>
+                        </div>
+                    </div>
+                </setting>
+                <setting string="Kitchen Extra Style" help="Customize the font size and bold weight for the Food Extras/Sides printed on kitchen receipts.">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <label for="pos_kitchen_extra_font_size" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_extra_font_size"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_kitchen_extra_is_bold" class="col-lg-3 o_light_label"/>
+                            <field name="pos_kitchen_extra_is_bold"/>
+                        </div>
+                    </div>
+                </setting>
                 <setting string="Queue Numbering Mode" help="Select the queue numbering behavior for this POS. Replaces long Order References with short Daily Queue Numbers on Receipts and KDS.">
                     <field name="pos_queue_number_mode"/>
                 </setting>

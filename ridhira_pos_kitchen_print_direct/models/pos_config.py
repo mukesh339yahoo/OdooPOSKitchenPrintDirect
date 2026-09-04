@@ -11,6 +11,11 @@ class PosConfig(models.Model):
         ('Large', 'Large')
     ], string='Kitchen Order Font Size', default='Normal', help="Font size for the Order Number on kitchen prints.")
     
+    kitchen_item_font_size = fields.Selection([
+        ('Normal', 'Normal'),
+        ('Large', 'Large')
+    ], string='Kitchen Item Font Size', default='Normal', help="Font size for the Food Items on kitchen prints.")
+    
     pos_queue_number_mode = fields.Selection([
         ('disabled', 'Disabled (Default Odoo)'),
         ('local', 'Single Terminal (Local)'),
@@ -29,3 +34,19 @@ class PosConfig(models.Model):
         help="Whether the Order Number should be bold on kitchen prints."
     )
 
+    kitchen_item_is_bold = fields.Boolean(
+        string='Kitchen Item Font Bold',
+        default=False,
+        help="Whether the Food Items should be bold on kitchen prints."
+    )
+
+    kitchen_extra_font_size = fields.Selection([
+        ('Normal', 'Normal'),
+        ('Large', 'Large')
+    ], string='Kitchen Extra Font Size', default='Normal', help="Font size for the Food Extras/Sides on kitchen prints.")
+    
+    kitchen_extra_is_bold = fields.Boolean(
+        string='Kitchen Extra Font Bold',
+        default=False,
+        help="Whether the Food Extras/Sides should be bold on kitchen prints."
+    )

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Display</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(34, 197, 94, 0.1) 0px, transparent 50%);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .column-header {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 2.5rem;
+            font-weight: 800;
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+        }
+
+        .preparing .column-header {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .ready .column-header {
+            color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .number-grid {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1.5rem;
+            align-content: start;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Hide scrollbar for TV */
+        .number-grid::-webkit-scrollbar { display: none; }
+
+        .queue-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            padding: 1rem;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            animation: fadeIn 0.4s ease-out;
+            transition: all 0.3s;
+        }
+
+        .ready .queue-number {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+        }
+        
+        /* Highlight the newest ready number */
+        .ready .queue-number.newest {
+            animation: popHighlight 1s ease-out;
+            background: rgba(34, 197, 94, 0.4);
+            border-color: var(--accent-green);
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes popHighlight {
+            0% { transform: scale(1); background: rgba(34, 197, 94, 0.8); }
+            50% { transform: scale(1.1); box-shadow: 0 0 40px rgba(34, 197, 94, 0.8); }
+            100% { transform: scale(1.05); }
+        }
+
+        .overlay-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Queue Display</h1>
+    </div>
+
+    <div class="container">
+        <!-- Preparing Column -->
+        <div class="column preparing">
+            <div class="column-header">Preparing</div>
+            <div class="number-grid" id="preparing-grid">
+                <!-- Numbers injected here -->
+            </div>
+        </div>
+
+        <!-- Ready Column -->
+        <div class="column ready">
+            <div class="column-header">Please Collect</div>
+            <div class="number-grid" id="ready-grid">
+                <!-- Numbers injected here -->
+            </div>
+        </div>
+    </div>
+
+    <button class="overlay-btn" onclick="initAudio()">Enable Sound</button>
+    
+    <!-- Audio element for chime -->
+    <audio id="chime" src="/static/ding.ogg" preload="auto"></audio>
+
+    <script>
+        let currentReadyNumbers = new Set();
+        let soundEnabled = false;
+
+        function initAudio() {
+            const chime = document.getElementById('chime');
+            chime.play().then(() => {
+                chime.pause();
+                chime.currentTime = 0;
+                soundEnabled = true;
+                document.querySelector('.overlay-btn').style.display = 'none';
+            }).catch(e => console.log("Audio init failed", e));
+        }
+
+        // Auto-enable if user taps anywhere
+        document.body.addEventListener('click', initAudio, {once:true});
+
+        async function fetchState() {
+            try {
+                const res = await fetch('/api/kds/state');
+                const orders = await res.json();
+                
+                const preparingGrid = document.getElementById('preparing-grid');
+                const readyGrid = document.getElementById('ready-grid');
+                
+                const newPreparing = [];
+                const newReady = [];
+                
+                // Orders are sorted by timestamp DESC from API.
+                // For Preparing: we want oldest first (bottom up or top down, usually oldest at top).
+                // So reverse the preparing ones.
+                const preparing = orders.filter(o => o.status === 'Preparing').reverse();
+                
+                // For Ready: we want latest at top, so keep DESC order.
+                const ready = orders.filter(o => o.status === 'Ready');
+                
+                // Render Preparing
+                preparingGrid.innerHTML = '';
+                preparing.forEach(order => {
+                    const div = document.createElement('div');
+                    div.className = 'queue-number';
+                    div.textContent = order.queue_number;
+                    preparingGrid.appendChild(div);
+                });
+
+                // Render Ready and check for new arrivals
+                readyGrid.innerHTML = '';
+                const incomingReadyNumbers = new Set(ready.map(o => o.queue_number));
+                
+                let playedSound = false;
+
+                ready.forEach((order, index) => {
+                    const isNewArrival = !currentReadyNumbers.has(order.queue_number);
+                    
+                    const div = document.createElement('div');
+                    div.className = 'queue-number';
+                    if (index === 0 && isNewArrival) {
+                        div.classList.add('newest'); // Highlight the absolute newest if it just arrived
+                    }
+                    
+                    div.textContent = order.queue_number;
+                    readyGrid.appendChild(div);
+                    
+                    if (isNewArrival && !playedSound) {
+                        playedSound = true;
+                    }
+                });
+
+                if (playedSound && soundEnabled) {
+                    const chime = document.getElementById('chime');
+                    chime.currentTime = 0;
+                    chime.play().catch(e => console.log("Play failed", e));
+                }
+
+                currentReadyNumbers = incomingReadyNumbers;
+
+            } catch (error) {
+                console.error("Failed to fetch state:", error);
+            }
+        }
+
+        // Fetch immediately and then poll every 2 seconds
+        fetchState();
+        setInterval(fetchState, 2000);
+    </script>
+</body>
+</html>

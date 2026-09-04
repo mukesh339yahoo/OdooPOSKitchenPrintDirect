@@ -45,5 +45,32 @@
                 </t>
             </span>
         </xpath>
+        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
+            <style>
+                <t t-if="data.kitchen_item_font_size == 'Large'">
+                    .pos-receipt-order-data, .pos-receipt-left-padding, .product-name {
+                        font-size: 1.5em !important;
+                        line-height: 1.2 !important;
+                    }
+                </t>
+                <t t-if="data.kitchen_item_is_bold">
+                    .pos-receipt-order-data, .pos-receipt-left-padding, .product-name {
+                        font-weight: bold !important;
+                    }
+                </t>
+                <t t-if="data.kitchen_extra_font_size == 'Large'">
+                    .orderline .ms-5, .orderline .ms-5 p, .orderline .fst-italic {
+                        font-size: 1.3em !important; 
+                        line-height: 1.2 !important;
+                    }
+                </t>
+                <t t-if="data.kitchen_extra_is_bold">
+                    .orderline .ms-5, .orderline .ms-5 p, .orderline .fst-italic {
+                        font-weight: bold !important;
+                        color: black !important;
+                    }
+                </t>
+            </style>
+        </xpath>
     </t>
 </templates>

@@ -9,6 +9,11 @@ class ResConfigSettings(models.TransientModel):
     pos_kitchen_order_font_size = fields.Selection(related='pos_config_id.kitchen_order_font_size', readonly=False)
     pos_kitchen_order_is_bold = fields.Boolean(related='pos_config_id.kitchen_order_is_bold', readonly=False)
 
+    pos_kitchen_item_font_size = fields.Selection(related='pos_config_id.kitchen_item_font_size', readonly=False)
+    pos_kitchen_item_is_bold = fields.Boolean(related='pos_config_id.kitchen_item_is_bold', readonly=False)
+
     pos_queue_number_mode = fields.Selection(related='pos_config_id.pos_queue_number_mode', readonly=False)
     pos_enable_table_tent = fields.Boolean(related='pos_config_id.pos_enable_table_tent', readonly=False)
 
+    pos_kitchen_extra_font_size = fields.Selection(related='pos_config_id.kitchen_extra_font_size', readonly=False)
+    pos_kitchen_extra_is_bold = fields.Boolean(related='pos_config_id.kitchen_extra_is_bold', readonly=False)

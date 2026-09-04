@@ -160,6 +160,19 @@ patch(PosStore.prototype, {
         
         result.kitchen_order_font_size = customFontSize || 'Normal';
         result.kitchen_order_is_bold = customIsBold === true;
+
+        const customItemFontSize = this.config?.kitchen_item_font_size ?? this.config?.raw?.kitchen_item_font_size;
+        const customItemIsBold = this.config?.kitchen_item_is_bold ?? this.config?.raw?.kitchen_item_is_bold;
+        
+        result.kitchen_item_font_size = customItemFontSize || 'Normal';
+        result.kitchen_item_is_bold = customItemIsBold === true;
+
+        const customExtraFontSize = this.config?.kitchen_extra_font_size ?? this.config?.raw?.kitchen_extra_font_size;
+        const customExtraIsBold = this.config?.kitchen_extra_is_bold ?? this.config?.raw?.kitchen_extra_is_bold;
+        
+        result.kitchen_extra_font_size = customExtraFontSize || 'Normal';
+        result.kitchen_extra_is_bold = customExtraIsBold === true;
+
         result.config = this.config; // Fix: expose config for Queue Number toggle logic
         result.daily_queue_number = order.daily_queue_number;
         result.table_tent_number = order.table_tent_number;
