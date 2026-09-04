@@ -50,3 +50,14 @@ class PosConfig(models.Model):
         default=False,
         help="Whether the Food Extras/Sides should be bold on kitchen prints."
     )
+
+    customer_receipt_font_size = fields.Selection([
+        ('Normal', 'Normal'),
+        ('Large', 'Large')
+    ], string='Customer Receipt Font Size', default='Normal', help="Font size for the Customer Receipt.")
+    
+    customer_receipt_is_bold = fields.Boolean(
+        string='Customer Receipt Font Bold',
+        default=False,
+        help="Whether the Customer Receipt should be bold."
+    )

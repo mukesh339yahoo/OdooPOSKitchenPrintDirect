@@ -17,3 +17,6 @@ class ResConfigSettings(models.TransientModel):
 
     pos_kitchen_extra_font_size = fields.Selection(related='pos_config_id.kitchen_extra_font_size', readonly=False)
     pos_kitchen_extra_is_bold = fields.Boolean(related='pos_config_id.kitchen_extra_is_bold', readonly=False)
+
+    pos_customer_receipt_font_size = fields.Selection(related='pos_config_id.customer_receipt_font_size', readonly=False)
+    pos_customer_receipt_is_bold = fields.Boolean(related='pos_config_id.customer_receipt_is_bold', readonly=False)

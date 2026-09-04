@@ -59,6 +59,18 @@
                 <setting string="Table Tent (Seating Tracker)" help="Enable the 'Assign Table Tent' button to type in plastic tent numbers for dine-in orders. Prints 'Seating: X' on receipts and KDS.">
                     <field name="pos_enable_table_tent"/>
                 </setting>
+                <setting string="Customer Receipt Style" help="Customize the font size and bold weight for the Customer Receipt.">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <label for="pos_customer_receipt_font_size" class="col-lg-3 o_light_label"/>
+                            <field name="pos_customer_receipt_font_size"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_customer_receipt_is_bold" class="col-lg-3 o_light_label"/>
+                            <field name="pos_customer_receipt_is_bold"/>
+                        </div>
+                    </div>
+                </setting>
             </xpath>
         </field>
     </record>

@@ -35,5 +35,35 @@
                 </div>
             </t>
         </xpath>
+        <xpath expr="//div[hasclass('pos-receipt')]" position="attributes">
+            <attribute name="class" add="customer-receipt-styled" separator=" "/>
+        </xpath>
+        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
+            <style>
+                <t t-if="order.config.customer_receipt_font_size == 'Large'">
+                    .customer-receipt-styled .pos-receipt-order-data, 
+                    .customer-receipt-styled .pos-receipt-left-padding, 
+                    .customer-receipt-styled .product-name, 
+                    .customer-receipt-styled .pos-receipt-right-align {
+                        font-size: 1.5em !important;
+                        line-height: 1.2 !important;
+                    }
+                    .customer-receipt-styled .tracking-number {
+                        font-size: 2em !important;
+                        line-height: 1.2 !important;
+                    }
+                </t>
+                <t t-if="order.config.customer_receipt_is_bold">
+                    .customer-receipt-styled .pos-receipt-order-data, 
+                    .customer-receipt-styled .pos-receipt-left-padding, 
+                    .customer-receipt-styled .product-name, 
+                    .customer-receipt-styled .pos-receipt-right-align,
+                    .customer-receipt-styled .tracking-number {
+                        font-weight: bold !important;
+                        color: black !important;
+                    }
+                </t>
+            </style>
+        </xpath>
     </t>
 </templates>
