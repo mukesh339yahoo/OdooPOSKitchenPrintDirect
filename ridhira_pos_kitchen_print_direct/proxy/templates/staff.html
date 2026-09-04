@@ -15,6 +15,7 @@
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --accent-green: #22c55e;
+            --accent-blue: #3b82f6;
         }
 
         body {
@@ -26,13 +27,21 @@
                 radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
             color: var(--text-primary);
-            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         header {
@@ -40,6 +49,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            flex-shrink: 0;
         }
 
         h1 {
@@ -51,55 +61,145 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 1.5rem;
+        .columns {
+            display: flex;
+            gap: 2rem;
+            flex: 1;
+            min-height: 0;
         }
-
-        .order-btn {
+        
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             background: var(--surface-color);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 2rem 1rem;
+            overflow: hidden;
+        }
+
+        .column-header {
+            padding: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
             text-align: center;
-            font-size: 2.5rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .col-preparing .column-header {
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .col-ready .column-header {
+            color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+            overflow-y: auto;
+            align-content: start;
+            flex: 1;
+        }
+        
+        .grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        .grid::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+
+        .order-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem 0.5rem;
+            text-align: center;
+            font-size: 2.2rem;
             font-weight: 700;
             color: var(--text-primary);
             cursor: pointer;
             transition: all 0.1s ease-in-out;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .order-btn:active {
             transform: scale(0.95);
+        }
+
+        .order-btn.preparing:hover {
             background: rgba(34, 197, 94, 0.2);
             border-color: var(--accent-green);
+        }
+        
+        .order-btn.ready {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+        
+        .order-btn.ready:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+        
+        .btn-subtitle {
+            font-size: 0.8rem;
+            font-weight: 500;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        
+        .order-btn.preparing .btn-subtitle::after {
+            content: "Tap \u2192 Ready";
+        }
+        
+        .order-btn.ready .btn-subtitle::after {
+            content: "Tap \u2192 Collected";
         }
 
         .empty-state {
             grid-column: 1 / -1;
             text-align: center;
-            padding: 4rem;
+            padding: 3rem;
             color: var(--text-secondary);
             font-size: 1.2rem;
-            background: var(--surface-color);
-            border-radius: 16px;
-            border: 1px solid var(--border-color);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Kitchen - Tap when Ready</h1>
+            <h1>Kitchen Staff Screen</h1>
             <a href="/" style="color: var(--text-secondary); text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.05);">Dashboard</a>
         </header>
         
-        <div class="grid" id="orders-grid">
-            <div class="empty-state">Loading...</div>
+        <div class="columns">
+            <!-- Preparing Column -->
+            <div class="column col-preparing">
+                <div class="column-header">Preparing</div>
+                <div class="grid" id="preparing-grid">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Ready Column -->
+            <div class="column col-ready">
+                <div class="column-header">Ready</div>
+                <div class="grid" id="ready-grid">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -111,13 +211,12 @@
                 const res = await fetch('/api/kds/state');
                 const orders = await res.json();
                 
-                // Only keep Preparing orders for staff screen
-                const preparingOrders = orders.filter(o => o.status === 'Preparing');
+                // Only care about Preparing and Ready (Collected is hidden)
+                const activeOrders = orders.filter(o => o.status === 'Preparing' || o.status === 'Ready');
                 
-                // Check if anything changed to avoid DOM thrashing
-                if (JSON.stringify(preparingOrders) !== JSON.stringify(currentOrders)) {
-                    currentOrders = preparingOrders;
-                    renderOrders(preparingOrders);
+                if (JSON.stringify(activeOrders) !== JSON.stringify(currentOrders)) {
+                    currentOrders = activeOrders;
+                    renderOrders(activeOrders);
                 }
             } catch (error) {
                 console.error("Failed to fetch state:", error);
@@ -125,32 +224,46 @@
         }
 
         function renderOrders(orders) {
-            const grid = document.getElementById('orders-grid');
-            grid.innerHTML = '';
+            const preparingGrid = document.getElementById('preparing-grid');
+            const readyGrid = document.getElementById('ready-grid');
             
-            if (orders.length === 0) {
-                grid.innerHTML = '<div class="empty-state">No orders in preparation.</div>';
-                return;
+            preparingGrid.innerHTML = '';
+            readyGrid.innerHTML = '';
+            
+            const preparing = orders.filter(o => o.status === 'Preparing').sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            const ready = orders.filter(o => o.status === 'Ready').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            if (preparing.length === 0) {
+                preparingGrid.innerHTML = '<div class="empty-state">No orders in preparation.</div>';
+            } else {
+                preparing.forEach(order => {
+                    const btn = document.createElement('button');
+                    btn.className = 'order-btn preparing';
+                    btn.innerHTML = `${order.queue_number}<span class="btn-subtitle"></span>`;
+                    btn.onclick = () => updateStatus(order.queue_number, 'Ready');
+                    preparingGrid.appendChild(btn);
+                });
             }
             
-            // Sort by oldest first so staff does oldest orders
-            orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-            orders.forEach(order => {
-                const btn = document.createElement('button');
-                btn.className = 'order-btn';
-                btn.textContent = order.queue_number;
-                btn.onclick = () => markReady(order.queue_number);
-                grid.appendChild(btn);
-            });
+            if (ready.length === 0) {
+                readyGrid.innerHTML = '<div class="empty-state">No ready orders.</div>';
+            } else {
+                ready.forEach(order => {
+                    const btn = document.createElement('button');
+                    btn.className = 'order-btn ready';
+                    btn.innerHTML = `${order.queue_number}<span class="btn-subtitle"></span>`;
+                    btn.onclick = () => updateStatus(order.queue_number, 'Collected');
+                    readyGrid.appendChild(btn);
+                });
+            }
         }
 
-        async function markReady(queueNumber) {
+        async function updateStatus(queueNumber, status) {
             try {
                 await fetch('/api/kds/update', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ queue_number: queueNumber, status: 'Ready' })
+                    body: JSON.stringify({ queue_number: queueNumber, status: status })
                 });
                 fetchState(); // Instantly refresh
             } catch (error) {

@@ -1,1 +1,7 @@
-{"max_retries": 5, "retry_delay": 3}
+{
+    "max_retries": 5,
+    "retry_delay": 3,
+    "auto_clear_minutes": 15,
+    "audio_alert_minutes": 1,
+    "audio_alert_repeat_seconds": 5
+}

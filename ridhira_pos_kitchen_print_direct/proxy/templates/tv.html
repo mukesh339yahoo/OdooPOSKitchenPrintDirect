@@ -185,6 +185,13 @@
         let currentReadyNumbers = new Set();
         let soundEnabled = false;
 
+        // Configuration values injected from Flask
+        const audioAlertMinutes = {{ settings.get('audio_alert_minutes', 3) }};
+        const audioAlertRepeatSeconds = {{ settings.get('audio_alert_repeat_seconds', 60) }};
+        
+        // Track last alert time for each queue number to manage repeating alerts
+        const lastAlertTimes = {};
+
         function initAudio() {
             const chime = document.getElementById('chime');
             chime.play().then(() => {
@@ -210,8 +217,7 @@
                 const newReady = [];
                 
                 // Orders are sorted by timestamp DESC from API.
-                // For Preparing: we want oldest first (bottom up or top down, usually oldest at top).
-                // So reverse the preparing ones.
+                // For Preparing: we want oldest first
                 const preparing = orders.filter(o => o.status === 'Preparing').reverse();
                 
                 // For Ready: we want latest at top, so keep DESC order.
@@ -226,11 +232,12 @@
                     preparingGrid.appendChild(div);
                 });
 
-                // Render Ready and check for new arrivals
+                // Render Ready and check for new arrivals / alerts
                 readyGrid.innerHTML = '';
                 const incomingReadyNumbers = new Set(ready.map(o => o.queue_number));
                 
                 let playedSound = false;
+                const now = new Date();
 
                 ready.forEach((order, index) => {
                     const isNewArrival = !currentReadyNumbers.has(order.queue_number);
@@ -245,9 +252,36 @@
                     readyGrid.appendChild(div);
                     
                     if (isNewArrival && !playedSound) {
-                        playedSound = true;
+                        playedSound = true; // Normal chime for new order
+                    }
+                    
+                    // Uncollected Order Alert Logic
+                    const orderDate = new Date(order.timestamp + 'Z'); // Append Z assuming UTC, or just parse if local
+                    const diffMs = now - orderDate;
+                    const diffMinutes = diffMs / 60000;
+                    
+                    if (diffMinutes >= audioAlertMinutes) {
+                        // It has exceeded the threshold. Should we play the alert?
+                        const lastAlert = lastAlertTimes[order.queue_number];
+                        
+                        if (!lastAlert || (now - lastAlert) / 1000 >= audioAlertRepeatSeconds) {
+                            if (!playedSound) {
+                                playedSound = true;
+                                div.style.animation = 'popHighlight 1s ease-out';
+                                div.style.borderColor = '#ef4444'; // Red flash
+                                setTimeout(() => { div.style.borderColor = ''; }, 1000);
+                            }
+                            lastAlertTimes[order.queue_number] = now;
+                        }
                     }
                 });
+                
+                // Cleanup removed orders from tracking
+                for (const qNum in lastAlertTimes) {
+                    if (!incomingReadyNumbers.has(qNum)) {
+                        delete lastAlertTimes[qNum];
+                    }
+                }
 
                 if (playedSound && soundEnabled) {
                     const chime = document.getElementById('chime');

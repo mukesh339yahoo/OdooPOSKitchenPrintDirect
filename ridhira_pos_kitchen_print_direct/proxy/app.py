@@ -86,11 +86,15 @@ def save_printers(data):
 def load_settings():
     """Loads global settings from settings.json."""
     if not os.path.exists(SETTINGS_FILE):
-        return {"max_retries": 5, "retry_delay": 3, "auto_clear_minutes": 5}
+        return {"max_retries": 5, "retry_delay": 3, "auto_clear_minutes": 5, "audio_alert_minutes": 3, "audio_alert_repeat_seconds": 60}
     with open(SETTINGS_FILE) as f:
         data = json.load(f)
         if "auto_clear_minutes" not in data:
             data["auto_clear_minutes"] = 5
+        if "audio_alert_minutes" not in data:
+            data["audio_alert_minutes"] = 3
+        if "audio_alert_repeat_seconds" not in data:
+            data["audio_alert_repeat_seconds"] = 60
         return data
 
 def save_settings(data):
@@ -466,7 +470,9 @@ def settings():
             new_settings = {
                 "max_retries": int(request.form.get('max_retries', 5)),
                 "retry_delay": int(request.form.get('retry_delay', 3)),
-                "auto_clear_minutes": int(request.form.get('auto_clear_minutes', 5))
+                "auto_clear_minutes": int(request.form.get('auto_clear_minutes', 5)),
+                "audio_alert_minutes": int(request.form.get('audio_alert_minutes', 3)),
+                "audio_alert_repeat_seconds": int(request.form.get('audio_alert_repeat_seconds', 60))
             }
             save_settings(new_settings)
             
@@ -525,6 +531,14 @@ def settings():
                 <div class="form-group">
                     <label>Auto-Clear Ready Orders (Minutes)</label>
                     <input type="number" name="auto_clear_minutes" value="{{ current_settings.get('auto_clear_minutes', 5) }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Uncollected Audio Alert Time (Minutes)</label>
+                    <input type="number" name="audio_alert_minutes" value="{{ current_settings.get('audio_alert_minutes', 3) }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Uncollected Audio Alert Repeat (Seconds)</label>
+                    <input type="number" name="audio_alert_repeat_seconds" value="{{ current_settings.get('audio_alert_repeat_seconds', 60) }}" required>
                 </div>
             </div>
 
