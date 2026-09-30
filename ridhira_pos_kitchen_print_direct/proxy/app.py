@@ -10,7 +10,12 @@ import time
 import platform
 from datetime import datetime
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = ImageDraw = ImageFont = None
+    print("WARNING: Pillow (PIL) is not installed. Please install Pillow: pip install Pillow")
+
 from flask import Flask, jsonify, request, render_template, render_template_string
 from xml.etree import ElementTree as ET
 from flask_cors import CORS
@@ -26,9 +31,12 @@ if IS_WINDOWS:
     try:
         import win32print
         import win32ui
-        from PIL import ImageWin
+        if Image:
+            from PIL import ImageWin
+        else:
+            ImageWin = None
     except ImportError:
-        print("WARNING: pywin32 is not installed. System printing on Windows will fail.")
+        print("WARNING: pywin32 or PIL.ImageWin is not installed. System printing on Windows will fail.")
 # Imports for ESC/POS (Requires 'python-escpos')
 from escpos.printer import Network as EscposNetworkPrinter
 from waitress import serve

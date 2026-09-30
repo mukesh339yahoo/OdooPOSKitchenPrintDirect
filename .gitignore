@@ -8,6 +8,7 @@ __pycache__/
 ridhira_pos_kitchen_print_direct/proxy/jobs.db
 ridhira_pos_kitchen_print_direct/proxy/print_images/
 venv/
+.venv/
 *.log
 *.png
 docker_test/test_env/
