@@ -10,6 +10,12 @@ patch(PosOrder.prototype, {
             result.customer_receipt_font_size = this.config.customer_receipt_font_size;
             result.customer_receipt_is_bold = this.config.customer_receipt_is_bold;
         }
+        if (this.daily_queue_number) {
+            result.daily_queue_number = this.daily_queue_number;
+        }
+        if (this.table_tent_number) {
+            result.table_tent_number = this.table_tent_number;
+        }
         return result;
     }
 });

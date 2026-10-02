@@ -180,7 +180,10 @@ patch(PosStore.prototype, {
         return result;
     },
 
-    async printChanges(order, orderChange, reprint = false, printers = this.unwatched.printers) {
+    async printChanges(order, orderChange, reprint = false, printers = null) {
+        if (!printers) {
+            printers = this.ticketPrinter?.printers || (this.unwatched && this.unwatched.printers) || this.printers || [];
+        }
         console.log("Ridhira: printChanges executing!", { orderId: order.id, orderChange, reprint, printers: printers?.length });
         
         let result = true;
@@ -201,7 +204,12 @@ patch(PosStore.prototype, {
         
         // 1. Process Normal Printers via Odoo's native QWeb rendering
         if (normalPrinters.length > 0) {
-            const normalResult = await super.printChanges(order, orderChange, reprint, normalPrinters);
+            let normalResult = true;
+            if (typeof super.printChanges === 'function') {
+                normalResult = await super.printChanges(order, orderChange, reprint, normalPrinters);
+            } else if (this.ticketPrinter && typeof this.ticketPrinter.printOrderChanges === 'function') {
+                normalResult = await this.ticketPrinter.printOrderChanges({ order, opts: { orderChange, reprint }, printers: normalPrinters });
+            }
             result = result && normalResult;
         }
         
@@ -385,21 +393,22 @@ patch(PosStore.prototype, {
                                 const payloadStr = "BOBA_LABEL_JSON:" + JSON.stringify(cupData);
                                 const base64Payload = btoa(unescape(encodeURIComponent(payloadStr)));
                                 
-                                const hwPrinter = printer.ridhira_proxy_printer || printer;
+                                const hwPrinter = printer.ridhira_proxy_printer || printer._instance || printer;
                                 
                                 // Crucial: Since we bypassed EpsonPrinter.printReceipt, we must inject the printer name manually!
                                 const targetPrinterName = (printer.config && printer.config.name) || printer.name || "POS_Printer";
                                 hwPrinter.proxy_printer_name = targetPrinterName;
                                 
                                 if (typeof hwPrinter.sendAction === 'function') {
-                                    // Odoo 19 bypass: send directly to Proxy without htmlToCanvas rendering
+                                    // Send directly to Proxy without htmlToCanvas rendering
                                     await hwPrinter.sendAction({
                                         action: "print_receipt",
                                         receipt: base64Payload,
                                         printer_name: targetPrinterName
                                     });
-                                } else {
-                                    // Fallback
+                                } else if (typeof hwPrinter.sendPrintingJob === 'function') {
+                                    await hwPrinter.sendPrintingJob(base64Payload);
+                                } else if (typeof printer.printReceipt === 'function') {
                                     await printer.printReceipt(base64Payload);
                                 }
                                 console.log(`[Ridhira POS] Successfully dispatched label payload for Cup ${i}`);

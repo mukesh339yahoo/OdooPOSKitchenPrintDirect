@@ -3,67 +3,11 @@
     <!-- Actionpad Override for Table Tent Button -->
     <t t-name="ridhira_pos_kitchen_print_direct.ActionpadWidget" t-inherit="point_of_sale.ActionpadWidget" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('actionpad')]" position="inside">
-            <t t-if="env.services.pos.config.pos_enable_table_tent">
-                <button class="button pay validation" t-on-click="assignTableTent">
+            <t t-if="this.pos.config.pos_enable_table_tent">
+                <button class="button pay validation btn btn-secondary btn-lg py-2 mt-1" t-on-click="assignTableTent">
                     <i class="fa fa-map-marker"/> Assign Table Tent
                 </button>
             </t>
-        </xpath>
-    </t>
-
-    <!-- Receipt Override -->
-    <t t-name="ridhira_pos_kitchen_print_direct.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
-        <xpath expr="//ReceiptHeader" position="after">
-            <t t-if="order.config.pos_queue_number_mode and order.config.pos_queue_number_mode !== 'disabled'">
-                <div class="pos-receipt-center-align" style="margin-top: 15px; margin-bottom: 15px;">
-                    <t t-if="order.config.pos_enable_table_tent and order.table_tent_number">
-                        <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
-                            Seating : <t t-esc="order.table_tent_number"/>
-                        </div>
-                    </t>
-                    <div>------------------------</div>
-                    <div style="font-size: 1.2em;">Your order number is</div>
-                    <div style="font-size: 3em; font-weight: bold;">
-                        <t t-if="order.daily_queue_number">
-                            <t t-esc="(order.daily_queue_number + '').padStart(3, '0')"/>
-                        </t>
-                        <t t-else="">
-                            <t t-esc="order.tracking_number and (order.tracking_number + '').padStart(3, '0')"/>
-                        </t>
-                    </div>
-                    <div>------------------------</div>
-                </div>
-            </t>
-        </xpath>
-        <xpath expr="//div[hasclass('pos-receipt')]" position="attributes">
-            <attribute name="class" add="customer-receipt-styled" separator=" "/>
-        </xpath>
-        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
-            <style>
-                <t t-if="order.config.customer_receipt_font_size == 'Large'">
-                    .customer-receipt-styled .pos-receipt-order-data, 
-                    .customer-receipt-styled .pos-receipt-left-padding, 
-                    .customer-receipt-styled .product-name, 
-                    .customer-receipt-styled .pos-receipt-right-align {
-                        font-size: 1.5em !important;
-                        line-height: 1.2 !important;
-                    }
-                    .customer-receipt-styled .tracking-number {
-                        font-size: 2em !important;
-                        line-height: 1.2 !important;
-                    }
-                </t>
-                <t t-if="order.config.customer_receipt_is_bold">
-                    .customer-receipt-styled .pos-receipt-order-data, 
-                    .customer-receipt-styled .pos-receipt-left-padding, 
-                    .customer-receipt-styled .product-name, 
-                    .customer-receipt-styled .pos-receipt-right-align,
-                    .customer-receipt-styled .tracking-number {
-                        font-weight: bold !important;
-                        color: black !important;
-                    }
-                </t>
-            </style>
         </xpath>
     </t>
 </templates>

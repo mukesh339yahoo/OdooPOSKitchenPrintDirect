@@ -1,6 +1,6 @@
 {
     'name': 'Ridhira POS Kitchen Print Direct',
-    'version': '2.0.0',
+    'version': '20.0.1.0.0',
     'summary': 'No IOT Box required. Manage POS and Kitchen Printers. Advanced Label/Sticker Printing. Print Job live dashboard and built-in KDS (Queue Display) included.',
     'description': "Integrates Odoo POS with local/network printers using a Python proxy. Supports advanced Thermal Label/Sticker printing. Now includes a local, proxy-hosted Queue Display System (KDS) for customer order tracking.",
     'author': 'Ridhira Technologies, Pune, India',
@@ -16,11 +16,11 @@
     'data': [
         'views/res_config_settings_views.xml',
         'views/pos_printer_views.xml',
+        'views/pos_order_receipt_views.xml',
         'data/ir_sequence_data.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [
-            'ridhira_pos_kitchen_print_direct/static/src/xml/pos_print_override.xml',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_print_override.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_combo_patch.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',

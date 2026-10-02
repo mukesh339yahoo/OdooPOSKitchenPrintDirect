@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <!-- 1. Kitchen Change Receipt Override (pos_order_change_receipt) -->
+        <template id="pos_order_change_receipt_inherit_ridhira" inherit_id="point_of_sale.pos_order_change_receipt">
+            <xpath expr="//div[@name='tracking-number']" position="replace">
+                <div name="tracking-number">
+                    <t t-set="kitchen_font_size" t-value="config.get('kitchen_order_font_size', 'Normal')"/>
+                    <t t-set="is_bold" t-value="config.get('kitchen_order_is_bold')"/>
+                    <t t-set="is_big" t-value="kitchen_font_size == 'Large'"/>
+
+                    <t t-if="config.get('pos_queue_number_mode') and config.get('pos_queue_number_mode') != 'disabled'">
+                        <t t-if="config.get('pos_enable_table_tent') and order.get('table_tent_number')">
+                            <div style="font-size: 0.8em; font-weight: bold; margin-bottom: 5px;">
+                                Seating : <t t-esc="order.get('table_tent_number')"/>
+                            </div>
+                        </t>
+                        <div t-attf-class="{{is_big ? 'text-insane' : 'text-huge'}}">
+                            <t t-if="is_bold"><strong>Queue: </strong></t>
+                            <t t-else="">Queue: </t>
+                            <t t-if="order.get('daily_queue_number')">
+                                <t t-esc="str(order.get('daily_queue_number')).zfill(3)"/>
+                            </t>
+                            <t t-else="">
+                                <t t-esc="order.get('tracking_number') and str(order.get('tracking_number')).zfill(3)"/>
+                            </t>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div t-attf-class="{{is_big ? 'text-insane' : 'text-huge'}}">
+                            <span t-out="extra_data.get('prefix', 'Order')"/>
+                            <span> </span>
+                            <t t-if="is_bold">
+                                <strong class="text-bold" t-out="order.get('tracking_number')"/>
+                            </t>
+                            <t t-else="">
+                                <span class="text-bold" t-out="order.get('tracking_number')"/>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+            </xpath>
+            <xpath expr="//head" position="inside">
+                <style>
+                    <t t-if="config.get('kitchen_item_font_size') == 'Large'">
+                        #pos-receipt .product-name, #pos-receipt .orderline .text-huge {
+                            font-size: 1.5em !important;
+                            line-height: 1.2 !important;
+                        }
+                    </t>
+                    <t t-if="config.get('kitchen_item_is_bold')">
+                        #pos-receipt .product-name, #pos-receipt .orderline .text-huge {
+                            font-weight: bold !important;
+                        }
+                    </t>
+                    <t t-if="config.get('kitchen_extra_font_size') == 'Large'">
+                        #pos-receipt .orderline .ps-5, #pos-receipt .orderline .text-large, #pos-receipt .orderline .text-italic {
+                            font-size: 1.3em !important;
+                            line-height: 1.2 !important;
+                        }
+                    </t>
+                    <t t-if="config.get('kitchen_extra_is_bold')">
+                        #pos-receipt .orderline .ps-5, #pos-receipt .orderline .text-large, #pos-receipt .orderline .text-italic {
+                            font-weight: bold !important;
+                            color: black !important;
+                        }
+                    </t>
+                </style>
+            </xpath>
+        </template>
+
+        <!-- 2. Customer Receipt Header Override (pos_order_receipt_header) -->
+        <template id="pos_order_receipt_header_inherit_ridhira" inherit_id="point_of_sale.pos_order_receipt_header">
+            <xpath expr="//div[@name='tracking-number']" position="replace">
+                <div class="w-100 text-center" t-if="order.get('tracking_number') or order.get('daily_queue_number')" name="tracking-number">
+                    <t t-if="config.get('pos_queue_number_mode') and config.get('pos_queue_number_mode') != 'disabled'">
+                        <div style="margin-top: 15px; margin-bottom: 15px;">
+                            <t t-if="config.get('pos_enable_table_tent') and order.get('table_tent_number')">
+                                <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
+                                    Seating : <t t-esc="order.get('table_tent_number')"/>
+                                </div>
+                            </t>
+                            <div>------------------------</div>
+                            <div style="font-size: 1.2em;">Your order number is</div>
+                            <div style="font-size: 3em; font-weight: bold;">
+                                <t t-if="order.get('daily_queue_number')">
+                                    <t t-esc="str(order.get('daily_queue_number')).zfill(3)"/>
+                                </t>
+                                <t t-else="">
+                                    <t t-esc="order.get('tracking_number') and str(order.get('tracking_number')).zfill(3)"/>
+                                </t>
+                            </div>
+                            <div>------------------------</div>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <span class="text-insane" t-out="order.get('tracking_number')"/>
+                    </t>
+                </div>
+            </xpath>
+        </template>
+
+        <!-- 3. Customer Receipt Styling Override (pos_order_receipt) -->
+        <template id="pos_order_receipt_inherit_ridhira" inherit_id="point_of_sale.pos_order_receipt">
+            <xpath expr="//head" position="inside">
+                <style>
+                    <t t-if="config.get('customer_receipt_font_size') == 'Large'">
+                        #pos-receipt .pos-receipt-body,
+                        #pos-receipt .product-name,
+                        #pos-receipt .text-large {
+                            font-size: 1.4em !important;
+                            line-height: 1.2 !important;
+                        }
+                    </t>
+                    <t t-if="config.get('customer_receipt_is_bold')">
+                        #pos-receipt .pos-receipt-body,
+                        #pos-receipt .product-name,
+                        #pos-receipt .text-large,
+                        #pos-receipt .price-incl {
+                            font-weight: bold !important;
+                            color: black !important;
+                        }
+                    </t>
+                </style>
+            </xpath>
+        </template>
+    </data>
+</odoo>

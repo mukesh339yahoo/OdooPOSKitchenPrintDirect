@@ -10,16 +10,20 @@ import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 
 patch(PosStore.prototype, {
     async assignDailyQueueNumber(order) {
+        if (!order) return;
         if (this.config.pos_queue_number_mode === 'global' || this.config.pos_queue_number_mode === 'local') {
             if (!order.daily_queue_number) {
                 if (this.config.pos_queue_number_mode === 'global') {
                     try {
-                        const nextNum = await this.env.services.orm.call(
-                            'pos.order', 
-                            'get_next_daily_queue_number', 
-                            []
-                        );
-                        order.daily_queue_number = nextNum;
+                        const orm = this.env?.services?.orm || this.data?.orm;
+                        if (orm) {
+                            const nextNum = await orm.call(
+                                'pos.order', 
+                                'get_next_daily_queue_number', 
+                                []
+                            );
+                            order.daily_queue_number = nextNum;
+                        }
                     } catch (e) {
                         console.error("Failed to fetch global queue number, falling back to local tracking number", e);
                     }
@@ -55,14 +59,17 @@ patch(PosStore.prototype, {
         try {
             const queueNumber = order.daily_queue_number || order.tracking_number;
             if (queueNumber) {
-                // Determine proxy IP from configured Epson printers (which are used to bridge to the proxy)
                 let proxyIp = "localhost";
-                const epsonPrinter = (this.unwatched?.printers || this.printers || []).find(p => 
-                    p.config?.printer_type === 'epson_epos' || p.printer_type === 'epson_epos' || p.config?.epson_printer_ip
+                const printers = this.ticketPrinter?.printers || 
+                                 (this.models?.['pos.printer']?.getAll && this.models['pos.printer'].getAll()) || 
+                                 this.unwatched?.printers || 
+                                 this.printers || [];
+                const epsonPrinter = printers.find(p => 
+                    p.printer_type === 'epson_epos' || p.config?.printer_type === 'epson_epos' || p.printer_ip || p.epson_printer_ip
                 );
                 
                 if (epsonPrinter) {
-                    proxyIp = epsonPrinter.config?.epson_printer_ip || epsonPrinter.epson_printer_ip || "localhost";
+                    proxyIp = epsonPrinter.printer_ip || epsonPrinter.epson_printer_ip || epsonPrinter.config?.printer_ip || "localhost";
                 }
 
                 if (proxyIp) {
@@ -80,12 +87,29 @@ patch(PosStore.prototype, {
         }
         
         return result;
+    },
+
+    async validateOrder(args = {}) {
+        const order = args?.order || (typeof this.getOrder === 'function' ? this.getOrder() : null);
+        if (order) {
+            await this.assignDailyQueueNumber(order);
+        }
+        return super.validateOrder(...arguments);
     }
 });
 
 patch(PaymentScreen.prototype, {
+    async onClickValidate(args = {}) {
+        const order = this.currentOrder || (this.pos && this.pos.getOrder && this.pos.getOrder());
+        if (order && this.pos) {
+            await this.pos.assignDailyQueueNumber(order);
+        }
+        return super.onClickValidate ? super.onClickValidate(...arguments) : undefined;
+    },
     async validateOrder(isForceValidate) {
-        await this.pos.assignDailyQueueNumber(this.currentOrder);
+        if (this.currentOrder && this.pos) {
+            await this.pos.assignDailyQueueNumber(this.currentOrder);
+        }
         return super.validateOrder(...arguments);
     }
 });
@@ -96,7 +120,8 @@ patch(ActionpadWidget.prototype, {
         this.dialog = useService("dialog");
     },
     async assignTableTent() {
-        const order = this.env.services.pos.get_order();
+        const order = this.currentOrder || (this.pos && this.pos.getOrder && this.pos.getOrder()) || (this.env?.services?.pos && this.env.services.pos.getOrder());
+        if (!order) return;
         const payload = await makeAwaitable(this.dialog, NumberPopup, {
             title: "Enter Table Tent / Seating Number",
             startingValue: order.table_tent_number || "",

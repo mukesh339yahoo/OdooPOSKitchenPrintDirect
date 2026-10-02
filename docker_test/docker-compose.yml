@@ -1,25 +1,26 @@
 services:
   web:
-    image: odoo:19.0
+    image: odoo:20.0
     depends_on:
       - db
     ports:
       - "8069:8069"
     volumes:
       - ../:/mnt/extra-addons
-      - odoo19-web-data:/var/lib/odoo
+      - odoo20-web-data:/var/lib/odoo
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo
+    command: -- --http-interface=0.0.0.0 -d odoo20_test --dev=all
   db:
-    image: postgres:15
+    image: postgres:16
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo
       - POSTGRES_USER=odoo
     volumes:
-      - odoo19-db-data:/var/lib/postgresql/data
+      - odoo20-db-data:/var/lib/postgresql/data
 volumes:
-  odoo19-db-data:
-  odoo19-web-data:
+  odoo20-db-data:
+  odoo20-web-data:
