@@ -8,7 +8,7 @@ def main():
         pyinstaller_bin = 'pyinstaller'
 
     cmd = [
-        pyinstaller_bin, '-y', '--onefile', '--clean',
+        sys.executable, '-m', 'PyInstaller', '-y', '--onefile', '--clean',
         '--name', 'app',
         '--add-data', 'templates;templates',
         '--add-data', 'static;static',
@@ -27,6 +27,9 @@ def main():
         '--hidden-import', 'jwt',
         '--hidden-import', 'pytz',
         '--hidden-import', 'dateutil',
+        '--hidden-import', 'flask_cors',
+        '--hidden-import', 'serial',
+        '--hidden-import', 'serial.tools.list_ports',
         'app.py'
     ]
     print("Running:", " ".join(cmd))

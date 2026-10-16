@@ -5,8 +5,18 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('templates', 'templates'), ('static', 'static'), ('fonts', 'fonts'), ('escpos/capabilities/capabilities.json', 'escpos')],
-    hiddenimports=[],
+    datas=[
+        ('templates', 'templates'),
+        ('static', 'static'),
+        ('fonts', 'fonts'),
+        ('escpos/capabilities/capabilities.json', 'escpos'),
+        ('escpos/capabilities/capabilities.json', 'escpos/capabilities')
+    ],
+    hiddenimports=[
+        'PIL', 'PIL.Image', 'PIL.ImageDraw', 'PIL.ImageFont',
+        'waitress', 'escpos', 'jwt', 'pytz', 'dateutil',
+        'flask_cors', 'serial', 'serial.tools.list_ports'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
