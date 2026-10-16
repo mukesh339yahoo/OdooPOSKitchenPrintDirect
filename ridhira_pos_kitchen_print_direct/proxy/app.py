@@ -855,6 +855,7 @@ def settings():
         <div class="header-container">
             <h2>Proxy Configuration</h2>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ url_for('scale_screen') }}" target="_blank" class="back-link" style="border-color: #17a2b8; color: #17a2b8;">⚖️ Scale Terminal ↗</a>
                 <a href="{{ url_for('staff_screen') }}" target="_blank" class="back-link" style="border-color: #007bff; color: #007bff;">🍳 Staff KDS ↗</a>
                 <a href="{{ url_for('tv_screen') }}" target="_blank" class="back-link" style="border-color: #6f42c1; color: #6f42c1;">📺 TV Screen ↗</a>
                 <a href="{{ url_for('index') }}" class="back-link">Home Dashboard</a>
@@ -1121,6 +1122,10 @@ def staff_screen():
 def tv_screen():
     settings = load_settings()
     return render_template('tv.html', settings=settings)
+
+@app.route('/scale')
+def scale_screen():
+    return render_template('scale.html')
 
 
 # --- Scale API Endpoints ---
