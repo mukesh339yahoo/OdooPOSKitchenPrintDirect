@@ -45,6 +45,53 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 0.5rem 0.9rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn.kds-staff-btn {
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+        }
+
+        .nav-btn.kds-staff-btn:hover {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: rgba(59, 130, 246, 0.6);
+            color: #bfdbfe;
+        }
+
+        .nav-btn.kds-tv-btn {
+            border-color: rgba(168, 85, 247, 0.4);
+            background: rgba(168, 85, 247, 0.15);
+            color: #d8b4fe;
+        }
+
+        .nav-btn.kds-tv-btn:hover {
+            background: rgba(168, 85, 247, 0.25);
+            border-color: rgba(168, 85, 247, 0.6);
+            color: #e9d5ff;
         }
 
         h1 {
@@ -214,10 +261,28 @@
 <body>
     <div class="container">
         <header>
-            <h1>Print Proxy Dashboard</h1>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <a href="{{ url_for('settings') }}" style="color: var(--text-primary); text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.1); transition: all 0.2s; font-size: 0.875rem; font-weight: 500;">Settings</a>
-                <div id="connection-status" style="color: var(--status-completed); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+            <div>
+                <h1>Print Proxy Dashboard</h1>
+                <div style="font-size: 0.825rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    Odoo 20 POS Kitchen Print &amp; Live Hardware Hub
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <a href="{{ url_for('staff_screen') }}" target="_blank" class="nav-btn kds-staff-btn" title="Open Kitchen Staff KDS (interactive order prep screen)">
+                    <span>🍳</span>
+                    <span>Staff KDS</span>
+                    <span style="font-size: 0.75rem; opacity: 0.7;">↗</span>
+                </a>
+                <a href="{{ url_for('tv_screen') }}" target="_blank" class="nav-btn kds-tv-btn" title="Open Customer Queue TV Display (audio calling pickup screen)">
+                    <span>📺</span>
+                    <span>TV Display</span>
+                    <span style="font-size: 0.75rem; opacity: 0.7;">↗</span>
+                </a>
+                <a href="{{ url_for('settings') }}" class="nav-btn" title="Proxy &amp; Hardware Settings">
+                    <span>⚙️</span>
+                    <span>Settings</span>
+                </a>
+                <div id="connection-status" style="color: var(--status-completed); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; margin-left: 0.25rem;">
                     <div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div>
                     Live Updates
                 </div>
@@ -305,6 +370,79 @@
                             <button onclick="saveScaleSettings()" style="flex: 1; padding: 0.4rem; border-radius: 4px; background: #22c55e; color: white; border: none; font-weight: 600; cursor: pointer; font-size: 0.8rem;">Save Scale Config</button>
                             <button onclick="simulateScaleTest()" style="padding: 0.4rem 0.8rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid var(--border-color); cursor: pointer; font-size: 0.8rem;">Simulate 1.250kg</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kitchen Display System (KDS) Panel -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.5rem;">🍽️</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Kitchen Display System (KDS)</h2>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Real-time kitchen order preparation and customer order pickup queues</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span id="kds-prep-badge" class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">0 Preparing</span>
+                    <span id="kds-ready-badge" class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">0 Ready</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+                <!-- Staff KDS Card -->
+                <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #93c5fd; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>🍳</span> Staff Kitchen Screen
+                            </span>
+                            <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 0.7rem;">Kitchen / Cooks</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; line-height: 1.4;">
+                            Live ticket screen for kitchen cooks. View incoming prep tickets, track elapsed cook times, and advance orders from <strong>Preparing → Ready → Collected</strong>.
+                        </p>
+                        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; font-size: 0.75rem; color: var(--text-secondary); flex-wrap: wrap;">
+                            <span>✓ Elapsed Timers</span>
+                            <span>✓ 1-Tap 'Ready'</span>
+                            <span>✓ Audio Beep Alerts</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <a href="{{ url_for('staff_screen') }}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; padding: 0.65rem 1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.25); border: 1px solid rgba(59, 130, 246, 0.5); color: #bfdbfe; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <span>Open Kitchen Screen</span>
+                            <span>↗</span>
+                        </a>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: monospace;">/staff</span>
+                    </div>
+                </div>
+
+                <!-- Customer TV Display Card -->
+                <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                    <div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #d8b4fe; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📺</span> Customer TV Queue Display
+                            </span>
+                            <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 0.7rem;">Dining Area</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0; line-height: 1.4;">
+                            Public order monitor for dining / pickup counters. Shows dual columns (Preparing vs Ready) with <strong>automated speech voice callouts</strong> when orders are ready.
+                        </p>
+                        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; font-size: 0.75rem; color: var(--text-secondary); flex-wrap: wrap;">
+                            <span>✓ Voice Speech Alerts</span>
+                            <span>✓ Dual Column Status</span>
+                            <span>✓ Auto-Purge Old</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <a href="{{ url_for('tv_screen') }}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; padding: 0.65rem 1rem; border-radius: 8px; background: rgba(168, 85, 247, 0.25); border: 1px solid rgba(168, 85, 247, 0.5); color: #e9d5ff; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <span>Open TV Screen</span>
+                            <span>↗</span>
+                        </a>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-family: monospace;">/tv</span>
                     </div>
                 </div>
             </div>
@@ -595,14 +733,36 @@
             }
         }
 
+        async function pollKDSState() {
+            try {
+                const res = await fetch("{{ url_for('api_kds_state') }}");
+                if (!res.ok) return;
+                const orders = await res.json();
+                let prepCount = 0;
+                let readyCount = 0;
+                orders.forEach(o => {
+                    if (o.status === 'Preparing') prepCount++;
+                    else if (o.status === 'Ready') readyCount++;
+                });
+                const prepBadge = document.getElementById('kds-prep-badge');
+                const readyBadge = document.getElementById('kds-ready-badge');
+                if (prepBadge) prepBadge.textContent = `${prepCount} Preparing`;
+                if (readyBadge) readyBadge.textContent = `${readyCount} Ready`;
+            } catch (e) {
+                // Ignore KDS state poll errors silently
+            }
+        }
+
         // Initial fetch and set interval for polling
         fetchPrinters();
         fetchJobs();
         pollScale();
+        pollKDSState();
         
         setInterval(() => {
             fetchPrinters();
             fetchJobs();
+            pollKDSState();
             // Reset connection status if it was disconnected
             document.getElementById('connection-status').innerHTML = `<div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div> Live Updates`;
             document.getElementById('connection-status').style.color = 'var(--status-completed)';

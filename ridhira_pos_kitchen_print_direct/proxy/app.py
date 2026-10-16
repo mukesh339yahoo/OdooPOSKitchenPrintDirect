@@ -854,7 +854,11 @@ def settings():
     <body>
         <div class="header-container">
             <h2>Proxy Configuration</h2>
-            <a href="{{ url_for('index') }}" class="back-link">Home Dashboard</a>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="{{ url_for('staff_screen') }}" target="_blank" class="back-link" style="border-color: #007bff; color: #007bff;">🍳 Staff KDS ↗</a>
+                <a href="{{ url_for('tv_screen') }}" target="_blank" class="back-link" style="border-color: #6f42c1; color: #6f42c1;">📺 TV Screen ↗</a>
+                <a href="{{ url_for('index') }}" class="back-link">Home Dashboard</a>
+            </div>
         </div>
         {% if message %}
             <div class="{% if 'Error' in message %}error{% else %}msg{% endif %}">{{ message }}</div>
