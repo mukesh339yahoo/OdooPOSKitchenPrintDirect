@@ -7,3 +7,4 @@ requests
 python-dateutil
 pytz
 waitress
+pyserial

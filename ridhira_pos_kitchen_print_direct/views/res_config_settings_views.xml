@@ -71,6 +71,23 @@
                         </div>
                     </div>
                 </setting>
+                <setting string="Direct Counter Weighing Scale" help="Connect an RS-232 / USB scale directly to the counter terminal without an IoT box. Automatically reads weight when weighable items (fruits, veggies, deli) are selected.">
+                    <field name="pos_scale_enabled"/>
+                    <div class="content-group" invisible="not pos_scale_enabled">
+                        <div class="row mt16">
+                            <label for="pos_scale_proxy_url" class="col-lg-3 o_light_label"/>
+                            <field name="pos_scale_proxy_url" placeholder="http://localhost:9100"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_scale_auto_confirm" class="col-lg-3 o_light_label"/>
+                            <field name="pos_scale_auto_confirm"/>
+                        </div>
+                        <div class="row">
+                            <label for="pos_scale_polling_interval" class="col-lg-3 o_light_label"/>
+                            <field name="pos_scale_polling_interval"/>
+                        </div>
+                    </div>
+                </setting>
             </xpath>
         </field>
     </record>

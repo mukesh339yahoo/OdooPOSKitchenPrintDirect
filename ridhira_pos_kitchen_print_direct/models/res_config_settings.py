@@ -20,3 +20,8 @@ class ResConfigSettings(models.TransientModel):
 
     pos_customer_receipt_font_size = fields.Selection(related='pos_config_id.customer_receipt_font_size', readonly=False)
     pos_customer_receipt_is_bold = fields.Boolean(related='pos_config_id.customer_receipt_is_bold', readonly=False)
+
+    pos_scale_enabled = fields.Boolean(related='pos_config_id.scale_enabled', readonly=False)
+    pos_scale_proxy_url = fields.Char(related='pos_config_id.scale_proxy_url', readonly=False)
+    pos_scale_auto_confirm = fields.Boolean(related='pos_config_id.scale_auto_confirm', readonly=False)
+    pos_scale_polling_interval = fields.Integer(related='pos_config_id.scale_polling_interval', readonly=False)

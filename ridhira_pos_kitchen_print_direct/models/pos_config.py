@@ -61,3 +61,24 @@ class PosConfig(models.Model):
         default=False,
         help="Whether the Customer Receipt should be bold."
     )
+
+    scale_enabled = fields.Boolean(
+        string="Enable Live Counter Scale",
+        default=False,
+        help="Read live weight from USB/Serial scale connected to local proxy without IoT box."
+    )
+    scale_proxy_url = fields.Char(
+        string="Scale Proxy URL",
+        default="http://localhost:9100",
+        help="URL of the local proxy providing the live scale feed."
+    )
+    scale_auto_confirm = fields.Boolean(
+        string="Auto-Add to Cart on Stable Weight",
+        default=True,
+        help="Automatically add weighable items to orderline once weight is stable, without extra clicks."
+    )
+    scale_polling_interval = fields.Integer(
+        string="Scale Polling Interval (ms)",
+        default=250,
+        help="Polling interval in milliseconds when querying scale."
+    )

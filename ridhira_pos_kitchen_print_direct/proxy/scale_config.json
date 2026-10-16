@@ -1,0 +1,12 @@
+{
+    "enabled": true,
+    "port": "AUTO",
+    "baudrate": 9600,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "protocol": "auto",
+    "timeout": 1.0,
+    "poll_command": "",
+    "poll_interval": 0.2
+}

@@ -26,6 +26,8 @@
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_self_order_kitchen_print.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_patch.js',
             'ridhira_pos_kitchen_print_direct/static/src/js/pos_order_receipt.js',
+            'ridhira_pos_kitchen_print_direct/static/src/js/scale_proxy_interface.js',
+            'ridhira_pos_kitchen_print_direct/static/src/js/scale_auto_confirm_patch.js',
             'ridhira_pos_kitchen_print_direct/static/src/xml/pos_receipt_override.xml',
         ],
         'web.assets_tests': [

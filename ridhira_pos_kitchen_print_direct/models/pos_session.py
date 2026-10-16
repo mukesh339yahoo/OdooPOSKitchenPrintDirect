@@ -16,6 +16,11 @@ class PosSession(models.Model):
     customer_receipt_font_size = fields.Selection(related='config_id.customer_receipt_font_size')
     customer_receipt_is_bold = fields.Boolean(related='config_id.customer_receipt_is_bold')
 
+    scale_enabled = fields.Boolean(related='config_id.scale_enabled')
+    scale_proxy_url = fields.Char(related='config_id.scale_proxy_url')
+    scale_auto_confirm = fields.Boolean(related='config_id.scale_auto_confirm')
+    scale_polling_interval = fields.Integer(related='config_id.scale_polling_interval')
+
     def _loader_params_pos_printer(self):
         result = super()._loader_params_pos_printer()
         result['search_params']['fields'].append('is_label_printer')
@@ -23,7 +28,14 @@ class PosSession(models.Model):
 
     def _load_pos_data_fields(self, config):
         result = super()._load_pos_data_fields(config)
-        result.extend(['kitchen_order_font_size', 'kitchen_order_is_bold', 'kitchen_item_font_size', 'kitchen_item_is_bold', 'kitchen_extra_font_size', 'kitchen_extra_is_bold', 'pos_queue_number_mode', 'pos_enable_table_tent', 'customer_receipt_font_size', 'customer_receipt_is_bold'])
+        result.extend([
+            'kitchen_order_font_size', 'kitchen_order_is_bold', 
+            'kitchen_item_font_size', 'kitchen_item_is_bold', 
+            'kitchen_extra_font_size', 'kitchen_extra_is_bold', 
+            'pos_queue_number_mode', 'pos_enable_table_tent', 
+            'customer_receipt_font_size', 'customer_receipt_is_bold',
+            'scale_enabled', 'scale_proxy_url', 'scale_auto_confirm', 'scale_polling_interval'
+        ])
         return result
 
     def _loader_params_pos_order(self):

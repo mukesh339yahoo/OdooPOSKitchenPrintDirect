@@ -19,3 +19,8 @@ with registry.cursor() as cr:
     
     pos_order = env['pos.order']
     print(f"HAS_DAILY_QUEUE_NUMBER: {'daily_queue_number' in pos_order._fields}")
+    
+    print(f"HAS_SCALE_ENABLED: {'scale_enabled' in pos_config._fields}")
+    print(f"HAS_SCALE_PROXY_URL: {'scale_proxy_url' in pos_config._fields}")
+    print(f"HAS_SCALE_AUTO_CONFIRM: {'scale_auto_confirm' in pos_config._fields}")
+    print(f"HAS_SCALE_POLLING_INTERVAL: {'scale_polling_interval' in pos_config._fields}")

@@ -8,3 +8,4 @@ python-dateutil
 pytz
 waitress
 pywin32
+pyserial

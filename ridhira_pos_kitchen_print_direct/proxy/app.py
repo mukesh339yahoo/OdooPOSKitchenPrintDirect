@@ -44,6 +44,13 @@ from waitress import serve
 # import websocket 
 # import ssl 
 
+try:
+    import serial
+    import serial.tools.list_ports
+except ImportError:
+    serial = None
+    print("WARNING: pyserial is not installed. Scale integration will not work. Install with: pip install pyserial")
+
 import sys
 
 # --- PyInstaller Path Resolution ---
@@ -61,6 +68,7 @@ IMAGE_SAVE_PATH = os.path.join(APPLICATION_PATH, 'print_images')
 DB_PATH = os.path.join(APPLICATION_PATH, 'jobs.db')
 PRINTERS_FILE = os.path.join(APPLICATION_PATH, "printers.json")
 SETTINGS_FILE = os.path.join(APPLICATION_PATH, "settings.json")
+SCALE_FILE = os.path.join(APPLICATION_PATH, "scale_config.json")
 LICENSE_SERVER_URL = "https://ridhira-license-server.mukeshsharma339.workers.dev"
 JWT_SECRET = "ridhira_kitchen_print_proxy_secret_key_2026" # IMPORTANT: Must match Cloudflare Worker secret
 
@@ -111,7 +119,324 @@ def save_settings(data):
         json.dump(data, f, indent=4)
 
 
+# --- Weighing Scale Manager ---
+def load_scale_config():
+    default_config = {
+        "enabled": True,
+        "port": "AUTO",
+        "baudrate": 9600,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1,
+        "protocol": "auto",
+        "timeout": 1.0,
+        "poll_command": "",
+        "poll_interval": 0.2
+    }
+    if not os.path.exists(SCALE_FILE):
+        try:
+            with open(SCALE_FILE, "w") as f:
+                json.dump(default_config, f, indent=4)
+        except Exception as e:
+            print(f"[SCALE] Error creating default scale_config.json: {e}")
+        return default_config
+    try:
+        with open(SCALE_FILE, "r") as f:
+            data = json.load(f)
+            for k, v in default_config.items():
+                if k not in data:
+                    data[k] = v
+            return data
+    except Exception as e:
+        print(f"[SCALE] Error reading scale_config.json: {e}")
+        return default_config
+
+def save_scale_config(config_data):
+    try:
+        with open(SCALE_FILE, "w") as f:
+            json.dump(config_data, f, indent=4)
+    except Exception as e:
+        print(f"[SCALE] Error saving scale_config.json: {e}")
+
+class ScaleManager:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.config = load_scale_config()
+        self.running = False
+        self.thread = None
+        self.ser = None
+        
+        # State
+        self.connected = False
+        self.active_port = None
+        self.raw_weight = 0.0
+        self.tare = 0.0
+        self.net_weight = 0.0
+        self.unit = "kg"
+        self.is_stable = False
+        self.is_over_capacity = False
+        self.is_under_zero = False
+        self.raw_data = ""
+        self.last_update = 0.0
+        self.error_message = None
+        
+        # Stability tracking buffer for generic scales
+        self.recent_weights = []
+        
+        if self.config.get("enabled", True):
+            self.start()
+
+    def get_available_ports(self):
+        if not serial:
+            return []
+        ports = []
+        try:
+            for p in serial.tools.list_ports.comports():
+                ports.append({
+                    "device": p.device,
+                    "description": p.description,
+                    "hwid": getattr(p, 'hwid', '')
+                })
+        except Exception as e:
+            print(f"[SCALE] Error listing ports: {e}")
+        return ports
+
+    def start(self):
+        if not serial:
+            self.error_message = "pyserial not installed"
+            return
+        if self.running:
+            return
+        self.running = True
+        self.thread = threading.Thread(target=self._worker_loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.running = False
+        if self.ser:
+            try:
+                self.ser.close()
+            except:
+                pass
+            self.ser = None
+
+    def restart(self, new_config=None):
+        self.stop()
+        if new_config:
+            self.config = new_config
+            save_scale_config(new_config)
+        else:
+            self.config = load_scale_config()
+        if self.config.get("enabled", True):
+            self.start()
+
+    def set_tare(self):
+        with self.lock:
+            self.tare = self.raw_weight
+            self.net_weight = max(0.0, round(self.raw_weight - self.tare, 3))
+        # Attempt to send hardware tare command if scale is listening
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.write(b"T\r\n")
+            except:
+                pass
+        return self.get_status()
+
+    def zero(self):
+        with self.lock:
+            self.tare = 0.0
+            self.net_weight = max(0.0, round(self.raw_weight, 3))
+        # Attempt to send hardware zero command
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.write(b"Z\r\n")
+            except:
+                pass
+        return self.get_status()
+
+    def get_status(self):
+        with self.lock:
+            is_stale = (time.time() - self.last_update > 3.0) if (self.connected and self.last_update > 0) else True
+            if self.active_port == "SIMULATED":
+                is_stale = False
+            return {
+                "connected": (self.connected and not is_stale) or (self.active_port == "SIMULATED"),
+                "port": self.active_port,
+                "weight": self.net_weight,
+                "gross_weight": self.raw_weight,
+                "tare": self.tare,
+                "unit": self.unit,
+                "is_stable": self.is_stable and not is_stale,
+                "is_over_capacity": self.is_over_capacity,
+                "is_under_zero": self.is_under_zero,
+                "raw": self.raw_data,
+                "timestamp": self.last_update,
+                "error": self.error_message,
+                "config": self.config
+            }
+
+    def _find_port(self):
+        target_port = self.config.get("port", "AUTO")
+        if target_port and target_port != "AUTO":
+            return target_port
+        
+        available = self.get_available_ports()
+        if available:
+            for p in available:
+                desc = p["description"].lower()
+                if any(x in desc for x in ["usb", "serial", "ch340", "ftdi", "prolific", "cp210", "uart"]):
+                    return p["device"]
+            return available[0]["device"]
+        return None
+
+    def _parse_line(self, line):
+        if not line:
+            return
+        line_str = line.strip()
+        if not line_str:
+            return
+        protocol = self.config.get("protocol", "auto")
+        
+        parsed_weight = None
+        parsed_unit = "kg"
+        parsed_stable = False
+        parsed_over = False
+        parsed_under = False
+        
+        # 1. CAS protocol (e.g. "ST,GS,+001.250kg" or "US,GS,+001.250kg" or "OL,GS")
+        if protocol in ("auto", "cas") and any(line_str.startswith(prefix) for prefix in ["ST,", "US,", "OL,"]):
+            parts = line_str.split(",")
+            status = parts[0]
+            if status == "ST":
+                parsed_stable = True
+            elif status == "OL":
+                parsed_over = True
+            
+            val_part = parts[-1]
+            match = re.search(r'([+-]?\d+\.?\d*)\s*(kg|g|lb)?', val_part, re.IGNORECASE)
+            if match:
+                parsed_weight = float(match.group(1))
+                if match.group(2):
+                    parsed_unit = match.group(2).lower()
+        
+        # 2. Toledo / NCI protocol: e.g. "1.250 KG" or "W 1.250kg"
+        elif protocol in ("auto", "toledo") and any(u in line_str.lower() for u in ["kg", "lb", " g"]):
+            match = re.search(r'([+-]?\s*\d+\.?\d*)\s*(kg|g|lb)', line_str, re.IGNORECASE)
+            if match:
+                parsed_weight = float(match.group(1).replace(" ", ""))
+                parsed_unit = match.group(2).lower()
+                if "?" in line_str or "M" in line_str:
+                    parsed_stable = False
+                else:
+                    parsed_stable = True
+
+        # 3. Generic ASCII number extraction fallback
+        if parsed_weight is None:
+            matches = re.findall(r'[-+]?\d*\.?\d+', line_str)
+            if matches:
+                try:
+                    for m in matches:
+                        if "." in m or len(m) > 1:
+                            parsed_weight = float(m)
+                            break
+                    if parsed_weight is None:
+                        parsed_weight = float(matches[0])
+                except:
+                    pass
+
+        if parsed_weight is not None:
+            if parsed_unit == "g" and parsed_weight > 20:
+                parsed_weight = round(parsed_weight / 1000.0, 4)
+                parsed_unit = "kg"
+            elif parsed_unit == "lb":
+                parsed_weight = round(parsed_weight * 0.453592, 4)
+                parsed_unit = "kg"
+
+            if parsed_weight < 0:
+                parsed_under = True
+                parsed_weight = 0.0
+
+            self.recent_weights.append(parsed_weight)
+            if len(self.recent_weights) > 4:
+                self.recent_weights.pop(0)
+            if len(self.recent_weights) >= 3 and protocol == "auto" and not parsed_stable:
+                if max(self.recent_weights) - min(self.recent_weights) <= 0.005:
+                    parsed_stable = True
+
+            with self.lock:
+                self.raw_weight = round(parsed_weight, 3)
+                self.net_weight = max(0.0, round(self.raw_weight - self.tare, 3))
+                self.unit = parsed_unit
+                self.is_stable = parsed_stable
+                self.is_over_capacity = parsed_over
+                self.is_under_zero = parsed_under
+                self.raw_data = line_str
+                self.last_update = time.time()
+                self.error_message = None
+
+    def _worker_loop(self):
+        while self.running:
+            port_to_open = self._find_port()
+            if not port_to_open:
+                with self.lock:
+                    if self.active_port != "SIMULATED":
+                        self.connected = False
+                        self.active_port = None
+                        self.error_message = "No serial scale port found"
+                time.sleep(2.0)
+                continue
+
+            try:
+                parity_map = {"N": serial.PARITY_NONE, "E": serial.PARITY_EVEN, "O": serial.PARITY_ODD}
+                parity_val = parity_map.get(self.config.get("parity", "N"), serial.PARITY_NONE)
+                
+                self.ser = serial.Serial(
+                    port=port_to_open,
+                    baudrate=int(self.config.get("baudrate", 9600)),
+                    bytesize=int(self.config.get("bytesize", 8)),
+                    parity=parity_val,
+                    stopbits=int(self.config.get("stopbits", 1)),
+                    timeout=float(self.config.get("timeout", 1.0))
+                )
+                
+                with self.lock:
+                    self.connected = True
+                    self.active_port = port_to_open
+                    self.error_message = None
+                print(f"[SCALE] Connected to scale on {port_to_open} @ {self.config.get('baudrate', 9600)} baud.")
+
+                poll_cmd = self.config.get("poll_command", "").strip()
+                poll_interval = float(self.config.get("poll_interval", 0.2))
+
+                while self.running:
+                    if poll_cmd:
+                        cmd_bytes = poll_cmd.encode('ascii').decode('unicode_escape').encode('latin1')
+                        self.ser.write(cmd_bytes)
+                        time.sleep(poll_interval)
+                    
+                    line = self.ser.readline().decode('ascii', errors='ignore')
+                    if line:
+                        self._parse_line(line)
+                    else:
+                        time.sleep(0.05)
+                        
+            except Exception as e:
+                with self.lock:
+                    if self.active_port != "SIMULATED":
+                        self.connected = False
+                        self.error_message = str(e)
+                print(f"[SCALE] Serial error on {port_to_open}: {e}")
+                if self.ser:
+                    try:
+                        self.ser.close()
+                    except:
+                        pass
+                    self.ser = None
+                time.sleep(2.0)
+
+
 # --- Database & Queue Setup ---
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -484,15 +809,25 @@ def settings():
             }
             save_settings(new_settings)
             
-            message = "Settings and Printers updated successfully!"
+            # Save Scale Settings
+            scale_conf = load_scale_config()
+            scale_conf["enabled"] = request.form.get('scale_enabled') == 'on'
+            scale_conf["port"] = request.form.get('scale_port', 'AUTO')
+            scale_conf["baudrate"] = int(request.form.get('scale_baudrate', 9600))
+            scale_conf["protocol"] = request.form.get('scale_protocol', 'auto')
+            scale_manager.restart(scale_conf)
+            
+            message = "Settings, Scale, and Printers updated successfully!"
         except Exception as e:
-            message = f"Error saving JSON: {e}"
+            message = f"Error saving settings: {e}"
     else:
         message = ""
 
     current_printers = load_printers()
     printers_json_str = json.dumps(current_printers, indent=4)
     current_settings = load_settings()
+    current_scale = load_scale_config()
+    available_ports = scale_manager.get_available_ports()
     
     html = """
     <!DOCTYPE html>
@@ -513,7 +848,7 @@ def settings():
             .back-link:hover { background-color: #28a745; color: white; }
             .form-group { margin-bottom: 15px; }
             label { font-weight: bold; display: block; margin-bottom: 5px; color: #555; }
-            input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+            input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
         </style>
     </head>
     <body>
@@ -527,7 +862,43 @@ def settings():
         
         <form method="POST">
             <div class="card">
-                <h3>Global Settings</h3>
+                <h3>⚖️ Counter Weighing Scale Settings</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="scale_enabled" {% if current_scale.get('enabled', True) %}checked{% endif %}>
+                        Enable Live Weighing Scale (Serial / USB)
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Scale COM Port</label>
+                    <select name="scale_port">
+                        <option value="AUTO" {% if current_scale.get('port') == 'AUTO' %}selected{% endif %}>Auto-Detect USB/Serial Scale</option>
+                        {% for p in available_ports %}
+                            <option value="{{ p.device }}" {% if current_scale.get('port') == p.device %}selected{% endif %}>{{ p.device }} - {{ p.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Baud Rate</label>
+                    <select name="scale_baudrate">
+                        {% for b in [9600, 4800, 19200, 2400] %}
+                            <option value="{{ b }}" {% if current_scale.get('baudrate') == b %}selected{% endif %}>{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Protocol</label>
+                    <select name="scale_protocol">
+                        <option value="auto" {% if current_scale.get('protocol') == 'auto' %}selected{% endif %}>Auto-Detect</option>
+                        <option value="cas" {% if current_scale.get('protocol') == 'cas' %}selected{% endif %}>CAS (PD-II / SW Series)</option>
+                        <option value="toledo" {% if current_scale.get('protocol') == 'toledo' %}selected{% endif %}>Mettler Toledo / NCI</option>
+                        <option value="generic" {% if current_scale.get('protocol') == 'generic' %}selected{% endif %}>Generic ASCII</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Global Print & KDS Settings</h3>
                 <div class="form-group">
                     <label>Max Retries (Print Queue)</label>
                     <input type="number" name="max_retries" value="{{ current_settings.get('max_retries', 5) }}" required>
@@ -561,7 +932,8 @@ def settings():
     </body>
     </html>
     """
-    return render_template_string(html, printers_json=printers_json_str, message=message, current_settings=current_settings)
+    return render_template_string(html, printers_json=printers_json_str, message=message, current_settings=current_settings, current_scale=current_scale, available_ports=available_ports)
+
 
 
 @app.route('/detect', methods=['GET'])
@@ -745,6 +1117,57 @@ def staff_screen():
 def tv_screen():
     settings = load_settings()
     return render_template('tv.html', settings=settings)
+
+
+# --- Scale API Endpoints ---
+@app.route('/scale/weight', methods=['GET'])
+def get_scale_weight():
+    return jsonify(scale_manager.get_status())
+
+@app.route('/scale/status', methods=['GET'])
+def get_scale_status():
+    status = scale_manager.get_status()
+    status["available_ports"] = scale_manager.get_available_ports()
+    return jsonify(status)
+
+@app.route('/scale/ports', methods=['GET'])
+def get_scale_ports():
+    return jsonify(scale_manager.get_available_ports())
+
+@app.route('/scale/tare', methods=['POST'])
+def post_scale_tare():
+    return jsonify(scale_manager.set_tare())
+
+@app.route('/scale/zero', methods=['POST'])
+def post_scale_zero():
+    return jsonify(scale_manager.zero())
+
+@app.route('/scale/config', methods=['GET', 'POST'])
+def handle_scale_config():
+    if request.method == 'POST':
+        new_conf = request.json or {}
+        current = load_scale_config()
+        current.update(new_conf)
+        scale_manager.restart(current)
+        return jsonify({"success": True, "status": scale_manager.get_status()})
+    return jsonify(load_scale_config())
+
+@app.route('/scale/simulate', methods=['POST'])
+def simulate_scale_weight():
+    data = request.json or {}
+    sim_weight = float(data.get("weight", 1.250))
+    with scale_manager.lock:
+        scale_manager.raw_weight = sim_weight
+        scale_manager.net_weight = max(0.0, round(sim_weight - scale_manager.tare, 3))
+        scale_manager.is_stable = bool(data.get("is_stable", True))
+        scale_manager.unit = data.get("unit", "kg")
+        scale_manager.last_update = time.time()
+        scale_manager.connected = True
+        scale_manager.active_port = "SIMULATED"
+        scale_manager.raw_data = f"SIM,{sim_weight}kg"
+        scale_manager.error_message = None
+    return jsonify(scale_manager.get_status())
+
 
 
 def generate_test_image_bytes(printer_name):
@@ -1358,6 +1781,7 @@ def handle_default_printer_action():
 
 # Initialize the queue manager globally so it works in WSGI mode
 queue_manager = PrintQueueManager()
+scale_manager = ScaleManager()
 
 if __name__ == '__main__':
     # Run the Flask app with Waitress WSGI server

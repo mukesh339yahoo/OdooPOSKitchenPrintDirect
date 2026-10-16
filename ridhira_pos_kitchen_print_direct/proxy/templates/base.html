@@ -231,10 +231,90 @@
             </div>
         </section>
 
+        <!-- Live Weighing Scale Panel -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.5rem;">⚖️</span>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Live Counter Weighing Scale</h2>
+                        <span id="scale-port-desc" style="font-size: 0.8rem; color: var(--text-secondary);">Scanning COM ports...</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span id="scale-status-badge" class="badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8;">Checking</span>
+                    <span id="scale-motion-badge" class="badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8;">--</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; align-items: center;">
+                <!-- Digital LCD Readout -->
+                <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.25rem; text-align: center;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">Live Net Weight</div>
+                    <div id="scale-weight-val" style="font-size: 3rem; font-weight: 700; font-family: monospace; color: #38bdf8; letter-spacing: 0.05em; line-height: 1.1;">
+                        0.000 <span style="font-size: 1.5rem; color: #94a3b8;">kg</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.5rem;">
+                        <span>Gross: <strong id="scale-gross-val" style="color: var(--text-primary);">0.000 kg</strong></span>
+                        <span>Tare: <strong id="scale-tare-val" style="color: var(--text-primary);">0.000 kg</strong></span>
+                    </div>
+                </div>
+
+                <!-- Controls & Port Config -->
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button onclick="triggerScaleTare()" style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-weight: 600; cursor: pointer;">
+                            Tare
+                        </button>
+                        <button onclick="triggerScaleZero()" style="flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.08); color: var(--text-primary); font-weight: 600; cursor: pointer;">
+                            Zero
+                        </button>
+                        <button onclick="toggleScaleSettings()" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.08); color: var(--text-primary); cursor: pointer;" title="Configure Scale Port">
+                            ⚙️
+                        </button>
+                    </div>
+
+                    <!-- Expandable Config Drawer -->
+                    <div id="scale-config-panel" style="display: none; background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: #93c5fd;">Scale Hardware Settings</div>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 120px;">
+                                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block;">COM Port</label>
+                                <select id="scale-port-select" style="width: 100%; padding: 0.4rem; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.8rem;"></select>
+                            </div>
+                            <div style="flex: 1; min-width: 90px;">
+                                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Baud Rate</label>
+                                <select id="scale-baud-select" style="width: 100%; padding: 0.4rem; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.8rem;">
+                                    <option value="9600">9600</option>
+                                    <option value="4800">4800</option>
+                                    <option value="19200">19200</option>
+                                    <option value="2400">2400</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 110px;">
+                                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Protocol</label>
+                                <select id="scale-protocol-select" style="width: 100%; padding: 0.4rem; background: #1e293b; color: white; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.8rem;">
+                                    <option value="auto">Auto-Detect</option>
+                                    <option value="cas">CAS (PD-II / SW)</option>
+                                    <option value="toledo">Toledo / NCI</option>
+                                    <option value="generic">Generic ASCII</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="saveScaleSettings()" style="flex: 1; padding: 0.4rem; border-radius: 4px; background: #22c55e; color: white; border: none; font-weight: 600; cursor: pointer; font-size: 0.8rem;">Save Scale Config</button>
+                            <button onclick="simulateScaleTest()" style="padding: 0.4rem 0.8rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid var(--border-color); cursor: pointer; font-size: 0.8rem;">Simulate 1.250kg</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Recent Jobs</h2>
             </div>
+
             
             <div class="table-container">
                 <table>
@@ -385,9 +465,140 @@
             }
         }
 
+        // --- Scale Polling & Management ---
+        let scalePortsLoaded = false;
+
+        async function pollScale() {
+            try {
+                const res = await fetch("/scale/status");
+                const data = await res.json();
+
+                const weightVal = document.getElementById('scale-weight-val');
+                const grossVal = document.getElementById('scale-gross-val');
+                const tareVal = document.getElementById('scale-tare-val');
+                const statusBadge = document.getElementById('scale-status-badge');
+                const motionBadge = document.getElementById('scale-motion-badge');
+                const portDesc = document.getElementById('scale-port-desc');
+
+                if (!weightVal) return;
+
+                // Weight display
+                const w = Number(data.weight || 0).toFixed(3);
+                weightVal.innerHTML = `${w} <span style="font-size: 1.5rem; color: #94a3b8;">${data.unit || 'kg'}</span>`;
+                grossVal.textContent = `${Number(data.gross_weight || 0).toFixed(3)} ${data.unit || 'kg'}`;
+                tareVal.textContent = `${Number(data.tare || 0).toFixed(3)} ${data.unit || 'kg'}`;
+
+                // Status Badge
+                if (data.connected) {
+                    statusBadge.textContent = "CONNECTED";
+                    statusBadge.style.background = "rgba(34, 197, 94, 0.2)";
+                    statusBadge.style.color = "#4ade80";
+                    portDesc.textContent = `Connected on ${data.port} (${data.config?.baudrate || 9600} baud, ${data.config?.protocol || 'auto'})`;
+                } else {
+                    statusBadge.textContent = "DISCONNECTED";
+                    statusBadge.style.background = "rgba(239, 68, 68, 0.2)";
+                    statusBadge.style.color = "#f87171";
+                    portDesc.textContent = data.error || (data.config?.port ? `Looking for scale on ${data.config.port}...` : "No scale detected");
+                }
+
+                // Motion Badge
+                if (data.is_over_capacity) {
+                    motionBadge.textContent = "OVERLOAD";
+                    motionBadge.style.background = "rgba(239, 68, 68, 0.3)";
+                    motionBadge.style.color = "#ef4444";
+                } else if (data.is_stable) {
+                    motionBadge.textContent = "STABLE";
+                    motionBadge.style.background = "rgba(34, 197, 94, 0.2)";
+                    motionBadge.style.color = "#4ade80";
+                } else {
+                    motionBadge.textContent = "MOTION";
+                    motionBadge.style.background = "rgba(234, 179, 8, 0.2)";
+                    motionBadge.style.color = "#facc15";
+                }
+
+                // Populate ports dropdown once
+                if (!scalePortsLoaded && data.available_ports) {
+                    const select = document.getElementById('scale-port-select');
+                    select.innerHTML = '<option value="AUTO">Auto-Detect</option>';
+                    for (const p of data.available_ports) {
+                        const opt = document.createElement('option');
+                        opt.value = p.device;
+                        opt.textContent = `${p.device} - ${p.description}`;
+                        if (data.config?.port === p.device) opt.selected = true;
+                        select.appendChild(opt);
+                    }
+                    if (data.config?.baudrate) {
+                        document.getElementById('scale-baud-select').value = String(data.config.baudrate);
+                    }
+                    if (data.config?.protocol) {
+                        document.getElementById('scale-protocol-select').value = data.config.protocol;
+                    }
+                    scalePortsLoaded = true;
+                }
+            } catch (err) {
+                console.error("Scale polling error:", err);
+            }
+        }
+
+        async function triggerScaleTare() {
+            try {
+                await fetch("/scale/tare", { method: "POST" });
+                pollScale();
+            } catch(e) {
+                alert("Tare error: " + e);
+            }
+        }
+
+        async function triggerScaleZero() {
+            try {
+                await fetch("/scale/zero", { method: "POST" });
+                pollScale();
+            } catch(e) {
+                alert("Zero error: " + e);
+            }
+        }
+
+        function toggleScaleSettings() {
+            const p = document.getElementById('scale-config-panel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function saveScaleSettings() {
+            const port = document.getElementById('scale-port-select').value;
+            const baud = parseInt(document.getElementById('scale-baud-select').value, 10);
+            const proto = document.getElementById('scale-protocol-select').value;
+            try {
+                const res = await fetch("/scale/config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ port: port, baudrate: baud, protocol: proto, enabled: true })
+                });
+                alert("Scale settings saved!");
+                toggleScaleSettings();
+                scalePortsLoaded = false;
+                pollScale();
+            } catch(e) {
+                alert("Error saving scale settings: " + e);
+            }
+        }
+
+        async function simulateScaleTest() {
+            try {
+                await fetch("/scale/simulate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ weight: 1.250, is_stable: true, unit: "kg" })
+                });
+                pollScale();
+            } catch(e) {
+                alert("Simulation error: " + e);
+            }
+        }
+
         // Initial fetch and set interval for polling
         fetchPrinters();
         fetchJobs();
+        pollScale();
         
         setInterval(() => {
             fetchPrinters();
@@ -396,6 +607,10 @@
             document.getElementById('connection-status').innerHTML = `<div class="status-dot" style="background: var(--status-completed); box-shadow: 0 0 8px var(--status-completed);"></div> Live Updates`;
             document.getElementById('connection-status').style.color = 'var(--status-completed)';
         }, 2500);
+
+        // High frequency scale polling (600ms) for responsive LCD
+        setInterval(pollScale, 600);
     </script>
+
 </body>
 </html>
